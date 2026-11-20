@@ -20,6 +20,7 @@ import { handleReplyEmail, handleForwardEmail } from "./routes/reply-forward";
 import { Folders } from "../shared/folders";
 import type { Env } from "./types";
 import { requireMailbox, type MailboxContext } from "./lib/mailbox";
+import { canAccessMailbox, loadMailboxAccess, mailboxAccessKey, normalizeMailboxId, saveMailboxAccess, parseMailboxAccess } from "./lib/access-control";
 
 type AppContext = Context<MailboxContext>;
 
@@ -28,7 +29,9 @@ type AppContext = Context<MailboxContext>;
 const CreateMailboxBody = z.object({
 	email: z.string().email(),
 	name: z.string().min(1),
-	settings: z.record(z.any()).optional(), // unvalidated — agentSystemPrompt goes straight to AI
+	settings: z.record(z.any()).optional(), // mailbox settings, not ACL metadata
+	ownerEmail: z.string().email().optional(),
+	members: z.array(z.string().email()).max(100).optional(),
 });
 
 const DraftBody = z.object({
@@ -81,6 +84,7 @@ app.use("/api/*", cors({
 		return undefined;
 	},
 }));
+app.use("/api/v1/mailboxes/:mailboxId", requireMailbox);
 app.use("/api/v1/mailboxes/:mailboxId/*", requireMailbox);
 
 // -- Config ---------------------------------------------------------
@@ -88,20 +92,32 @@ app.use("/api/v1/mailboxes/:mailboxId/*", requireMailbox);
 app.get("/api/v1/config", (c) => {
 	const domainsRaw = c.env.DOMAINS || "";
 	const domains = domainsRaw.split(",").map((d) => d.trim()).filter(Boolean);
-	const emailAddresses = c.env.EMAIL_ADDRESSES ?? [];
-	return c.json({ domains, emailAddresses });
+	const actor = c.var.mqIdentity;
+	const emailAddresses = actor?.isAdmin ? (c.env.EMAIL_ADDRESSES ?? []) : [];
+	return c.json({ domains, emailAddresses, isAdmin: actor?.isAdmin ?? false, signedInEmail: actor?.email ?? "" });
 });
 
 // -- Mailboxes ------------------------------------------------------
 
 app.get("/api/v1/mailboxes", async (c) => {
+	const actor = c.var.mqIdentity;
+	if (!actor) return c.json({ error: "Authentication required" }, 403);
 	const allMailboxes = await listMailboxes(c.env.BUCKET);
-	return c.json(allMailboxes.map((m) => ({ ...m, name: m.id })));
+	if (actor.isAdmin) return c.json(allMailboxes.map((m) => ({ ...m, name: m.id })));
+	const assigned = await Promise.all(allMailboxes.map(async (mailbox) => {
+		const policy = await loadMailboxAccess(c.env.BUCKET, mailbox.id);
+		return canAccessMailbox(actor, policy) ? { ...mailbox, name: mailbox.id } : null;
+	}));
+	return c.json(assigned.filter((mailbox) => mailbox !== null));
 });
 
 app.post("/api/v1/mailboxes", async (c) => {
-	const { name, settings, email: rawEmail } = CreateMailboxBody.parse(await c.req.json());
-	const email = rawEmail.toLowerCase();
+	if (!c.var.mqIdentity?.isAdmin) return c.json({ error: "Only administrators can provision mailboxes" }, 403);
+	const { name, settings, ownerEmail, members, email: rawEmail } = CreateMailboxBody.parse(await c.req.json());
+	const email = normalizeMailboxId(rawEmail);
+	if (!email) return c.json({ error: "Invalid mailbox address" }, 400);
+	const allowedDomains = (c.env.DOMAINS || "").split(",").map((domain) => domain.trim().toLowerCase());
+	if (!allowedDomains.includes(email.split("@")[1])) return c.json({ error: "Domain is not configured for mail" }, 403);
 	const allowedAddresses = (c.env.EMAIL_ADDRESSES ?? []) as string[];
 	if (allowedAddresses.length > 0 && !allowedAddresses.map((a) => a.toLowerCase()).includes(email)) {
 		return c.json({ error: "Mailbox creation is restricted to configured EMAIL_ADDRESSES" }, 403);
@@ -110,10 +126,38 @@ app.post("/api/v1/mailboxes", async (c) => {
 	if (await c.env.BUCKET.head(key)) return c.json({ error: "Mailbox already exists" }, 409);
 	const defaultSettings = { fromName: name, forwarding: { enabled: false, email: "" }, signature: { enabled: false, text: "" }, autoReply: { enabled: false, subject: "", message: "" } };
 	const finalSettings = { ...defaultSettings, ...settings };
-	await c.env.BUCKET.put(key, JSON.stringify(finalSettings));
-	const stub = c.env.MAILBOX.get(c.env.MAILBOX.idFromName(email));
-	await stub.getFolders();
+	// Store the ACL separately from mutable settings so employees cannot grant
+	// themselves access to other mailboxes via the settings endpoint.
+	const acl = parseMailboxAccess({ ownerEmail: ownerEmail || email, members: members || [] });
+	if (!acl) return c.json({ error: "Invalid employee or member identity" }, 400);
+	await saveMailboxAccess(c.env.BUCKET, email, acl);
+	try {
+		await c.env.BUCKET.put(key, JSON.stringify(finalSettings));
+		const stub = c.env.MAILBOX.get(c.env.MAILBOX.idFromName(email));
+		await stub.getFolders();
+	} catch (error) {
+		// Fail closed if provisioning fails; no visible orphan mailboxes.
+		await Promise.allSettled([c.env.BUCKET.delete(key), c.env.BUCKET.delete(mailboxAccessKey(email))]);
+		throw error;
+	}
 	return c.json({ id: email, email, name, settings: finalSettings }, 201);
+});
+
+// Access policies are administrator-owned and cannot be edited via mailbox settings.
+app.get("/api/v1/mailboxes/:mailboxId/access", async (c) => {
+	if (!c.var.mqIdentity?.isAdmin) return c.json({ error: "Administrator required" }, 403);
+	const mailboxId = c.req.param("mailboxId")!;
+	return c.json(await loadMailboxAccess(c.env.BUCKET, mailboxId));
+});
+
+app.put("/api/v1/mailboxes/:mailboxId/access", async (c) => {
+	if (!c.var.mqIdentity?.isAdmin) return c.json({ error: "Administrator required" }, 403);
+	const parsed = z.object({ ownerEmail: z.string().email(), members: z.array(z.string().email()).max(100).default([]) }).safeParse(await c.req.json());
+	if (!parsed.success) return c.json({ error: "Invalid mailbox access policy" }, 400);
+	const acl = parseMailboxAccess(parsed.data);
+	if (!acl) return c.json({ error: "Invalid mailbox access policy" }, 400);
+	const mailboxId = c.req.param("mailboxId")!;
+	return c.json(await saveMailboxAccess(c.env.BUCKET, mailboxId, acl));
 });
 
 app.get("/api/v1/mailboxes/:mailboxId", async (c) => {
@@ -133,9 +177,11 @@ app.put("/api/v1/mailboxes/:mailboxId", async (c) => {
 });
 
 app.delete("/api/v1/mailboxes/:mailboxId", async (c) => {
+	if (!c.var.mqIdentity?.isAdmin) return c.json({ error: "Administrator required" }, 403);
 	const mailboxId = c.req.param("mailboxId")!;
 	const key = `mailboxes/${mailboxId}.json`;
 	if (!(await c.env.BUCKET.head(key))) return c.json({ error: "Not found" }, 404);
+	await c.env.BUCKET.delete(mailboxAccessKey(mailboxId)); // revoke before deleting mailbox
 	await c.env.BUCKET.delete(key); // TODO: also delete DO data and R2 attachment blobs
 	return c.body(null, 204);
 });
