@@ -9,6 +9,7 @@ import { createRequestHandler } from "react-router";
 import { app as apiApp, receiveEmail } from "./index";
 import { EmailMCP } from "./mcp";
 import type { Env } from "./types";
+import { normalizeIdentity, type MailIdentity } from "./lib/access-control";
 
 export { MailboxDO } from "./durableObject";
 export { EmailAgent } from "./agent";
@@ -40,12 +41,13 @@ function getAccessUrls(teamDomain: string) {
 }
 
 // Main app that wraps the API and adds React Router fallback
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<{ Bindings: Env; Variables: { mqIdentity: MailIdentity } }>();
 
 // Cloudflare Access JWT validation middleware (production only)
 app.use("*", async (c, next) => {
-	// Skip validation in development
+	// Development-only trusted stub. Never expose local dev publicly.
 	if (import.meta.env.DEV) {
+		c.set("mqIdentity", { email: "local-admin@localhost.invalid", isAdmin: true });
 		return next();
 	}
 
@@ -71,21 +73,27 @@ app.use("*", async (c, next) => {
 			issuer,
 			audience: POLICY_AUD,
 		});
-		// First-release policy: one designated administrator only. Cloudflare Access
-		// authenticates users; this second check authorizes our sole mailbox operator.
-		// Do NOT widen to multiple employees until per-mailbox ACLs cover API,
-		// agent WebSockets and MCP. A simple allowlist is not mailbox isolation.
-		const authenticatedEmail = typeof payload.email === "string"
-			? payload.email.trim().toLowerCase() : "";
-		if (!authenticatedEmail || authenticatedEmail !== MQ_ADMIN_EMAIL.trim().toLowerCase()) {
-			return c.text("This MAH Quantum Mail account is not authorized.", 403);
+		const authenticatedEmail = normalizeIdentity(payload.email);
+		const adminEmail = normalizeIdentity(MQ_ADMIN_EMAIL);
+		if (!authenticatedEmail || !adminEmail) {
+			return c.text("Cloudflare Access identity is not a valid email", 403);
 		}
+		c.set("mqIdentity", {
+			email: authenticatedEmail,
+			isAdmin: authenticatedEmail === adminEmail,
+		});
 	} catch {
 		return c.text("Invalid or expired Access token", 403);
 	}
 
-	// Admin-only pilot. The original upstream API shares all mailboxes within
-	// one authenticated session; employee onboarding requires granular ACLs.
+	// AI agent and MCP have their own Durable Object lifecycles. Until their
+	// internal tool executions enforce mailbox ACLs, disallow employee access.
+	// The administrator can use them; employees still have isolated webmail.
+	const path = new URL(c.req.url).pathname;
+	if ((path === "/mcp" || path.startsWith("/mcp/") || path.startsWith("/agents/"))
+		&& !c.var.mqIdentity.isAdmin) {
+		return c.text("AI/MCP is currently restricted to mailbox administrators", 403);
+	}
 	return next();
 });
 
