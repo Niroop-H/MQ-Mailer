@@ -5,6 +5,9 @@
 import { Badge, Button, Input, Loader, useKumoToastManager } from "@cloudflare/kumo";
 import { RobotIcon, ArrowCounterClockwiseIcon } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import api from "~/services/api";
+import { queryKeys } from "~/queries/keys";
 import { useParams } from "react-router";
 import { useMailbox, useUpdateMailbox } from "~/queries/mailboxes";
 
@@ -17,10 +20,20 @@ export default function SettingsRoute() {
 	const toastManager = useKumoToastManager();
 	const { data: mailbox } = useMailbox(mailboxId);
 	const updateMailboxMutation = useUpdateMailbox();
+	const { data: configData } = useQuery({ queryKey: queryKeys.config, queryFn: api.getConfig, staleTime: Infinity });
+	const isAdmin = configData?.isAdmin === true;
+	const { data: accessPolicy, refetch: reloadAccess } = useQuery({
+		queryKey: ["mailboxAccess", mailboxId],
+		queryFn: () => api.getMailboxAccess(mailboxId!),
+		enabled: isAdmin && !!mailboxId,
+	});
 
 	const [displayName, setDisplayName] = useState("");
 	const [agentPrompt, setAgentPrompt] = useState("");
 	const [isSaving, setIsSaving] = useState(false);
+	const [ownerEmail, setOwnerEmail] = useState("");
+	const [membersText, setMembersText] = useState("");
+	const [isSavingAccess, setIsSavingAccess] = useState(false);
 
 	useEffect(() => {
 		if (mailbox) {
@@ -28,6 +41,28 @@ export default function SettingsRoute() {
 			setAgentPrompt(mailbox.settings?.agentSystemPrompt || "");
 		}
 	}, [mailbox]);
+
+	useEffect(() => {
+		if (accessPolicy) {
+			setOwnerEmail(accessPolicy.ownerEmail);
+			setMembersText(accessPolicy.members.join("\\n"));
+		}
+	}, [accessPolicy]);
+
+	const handleSaveAccess = async () => {
+		if (!isAdmin || !mailboxId) return;
+		setIsSavingAccess(true);
+		try {
+			await api.updateMailboxAccess(mailboxId, {
+				ownerEmail: ownerEmail.trim(),
+				members: membersText.split(/[,\\n]+/).map((email) => email.trim()).filter(Boolean),
+			});
+			await reloadAccess();
+			toastManager.add({ title: "Employee access updated" });
+		} catch (err) {
+			toastManager.add({ title: err instanceof Error ? err.message : "Unable to update employee access", variant: "error" });
+		} finally { setIsSavingAccess(false); }
+	};
 
 	const handleSave = async () => {
 		if (!mailbox || !mailboxId) return;
@@ -83,6 +118,21 @@ export default function SettingsRoute() {
 						<Input label="Email" type="email" value={mailbox.email} disabled />
 					</div>
 				</div>
+
+				{isAdmin && (
+					<div className="rounded-lg border border-kumo-line bg-kumo-base p-5">
+						<div className="text-sm font-semibold text-kumo-default mb-2">Employee access &amp; shared mailboxes</div>
+						<p className="text-xs text-kumo-subtle mb-4">Only the administrator can assign an owner or authorized team members. Enter their exact Cloudflare Access sign-in emails. Existing mailboxes without an owner remain admin-only.</p>
+						<div className="space-y-3">
+							<Input label="Owner's sign-in email" type="email" value={ownerEmail} placeholder="employee@example.com" onChange={(e) => setOwnerEmail(e.target.value)} />
+							<div>
+								<label htmlFor="mq-members" className="block text-sm font-medium mb-1">Additional members (one email per line)</label>
+								<textarea id="mq-members" className="w-full rounded-md border border-kumo-line bg-kumo-base px-3 py-2 text-sm" rows={4} value={membersText} onChange={(e) => setMembersText(e.target.value)} placeholder="teammate@example.com" />
+							</div>
+							<Button variant="primary" loading={isSavingAccess} disabled={!ownerEmail.trim()} onClick={handleSaveAccess}>Save mailbox access</Button>
+						</div>
+					</div>
+				)}
 
 				{/* Agent System Prompt */}
 				<div className="rounded-lg border border-kumo-line bg-kumo-base p-5">

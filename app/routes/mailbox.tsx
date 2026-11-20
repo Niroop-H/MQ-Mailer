@@ -3,6 +3,9 @@
 //     https://opensource.org/licenses/Apache-2.0
 
 import { useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import api from "~/services/api";
+import { queryKeys } from "~/queries/keys";
 import { Outlet, useParams } from "react-router";
 import AgentSidebar from "~/components/AgentSidebar";
 import ComposeEmail from "~/components/ComposeEmail";
@@ -15,6 +18,7 @@ export default function MailboxRoute() {
 	const { mailboxId } = useParams<{ mailboxId: string }>();
 	// Prefetch mailbox data for child components
 	useMailbox(mailboxId);
+	const { data: configData } = useQuery({ queryKey: queryKeys.config, queryFn: api.getConfig, staleTime: Infinity });
 	const prevMailboxIdRef = useRef<string | undefined>(undefined);
 	const {
 		isSidebarOpen,
@@ -70,7 +74,7 @@ export default function MailboxRoute() {
 			</div>
 
 			{/* Agent + MCP sidebar -- togglable on desktop */}
-			{isAgentPanelOpen && (
+			{configData?.isAdmin === true && isAgentPanelOpen && (
 				<div className="hidden lg:flex w-[380px] shrink-0 border-l border-kumo-line flex-col bg-kumo-base overflow-hidden">
 					<AgentSidebar />
 				</div>
