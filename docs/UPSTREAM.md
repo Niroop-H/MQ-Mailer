@@ -2,7 +2,7 @@
 
 Source: https://github.com/cloudflare/agentic-inbox
 License: Apache-2.0, preserved in repository root LICENSE.
-Imported 2026-11-20 from upstream main into independent Niroop-H/MQ-Mailer (not a submodule).
+Imported 2026-11-20 from upstream commit `48039bb6785af34e592c2966f87cde2b255c4c80` (main at time of import) into independent Niroop-H/MQ-Mailer (not a submodule).
 
 The source app and Worker runtime are copied directly into this repository. Modifications include UI identity, favicon, domain/worker/bucket settings, packaging identity, and the admin-only authorization requirement.
 

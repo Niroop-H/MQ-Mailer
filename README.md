@@ -1,6 +1,6 @@
 # MQ Mailer — MAH Quantum Mail
 
-Independent, self-hosted business email and AI inbox based on [Cloudflare Agentic Inbox](https://github.com/cloudflare/agentic-inbox).
+Independent, self-hosted email and AI inbox based on [Cloudflare Agentic Inbox](https://github.com/cloudflare/agentic-inbox).
 
 **Source ownership:** All application source files are stored in this repository. It is not a Git submodule, hosted iframe, or dependency on the continued existence of the upstream repository. The project preserves upstream Apache-2.0 licensing and attribution; see [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
@@ -13,7 +13,8 @@ Independent, self-hosted business email and AI inbox based on [Cloudflare Agenti
 - Mailbox data: Durable Objects / SQLite
 - Attachments and mailbox metadata: Cloudflare R2
 - Incoming email: Cloudflare Email Routing → Worker email handler
-- Outgoing email: Cloudflare Email Service sending binding (provider onboarding required)
+- Outgoing transactional email: Cloudflare Email Service sending binding (provider onboarding required)
+- Outgoing **ordinary business correspondence**: requires an additional compliant, permitted email-sending provider/adapter; **not implemented yet**
 - AI: Cloudflare Workers AI and the Agents SDK
 - Authentication: Cloudflare Access with validated JWT, plus an administrator identity restriction
 - Source and CI: GitHub (`Niroop-H/MQ-Mailer`)
@@ -33,6 +34,10 @@ Build and type checks: `npm run build` and `npm run typecheck`.
 ## Branding
 
 Product: **MQ Mailer / MAH Quantum Mail**. This copy changes the branding and adds a separate administrator check while retaining the upstream email/AI architecture. Do not remove the original license and source notices when modifying or distributing it.
+
+## Outbound mail limitation
+
+Cloudflare Email Service is documented for **transactional email only**; it must not be assumed to support general employee/business correspondence. Before using MQ Mailer as a full replacement for a commercial mailbox provider, implement and test a permitted general-purpose outbound delivery provider and complete SPF/DKIM/DMARC setup.
 
 ## Known limitations and release gates
 
