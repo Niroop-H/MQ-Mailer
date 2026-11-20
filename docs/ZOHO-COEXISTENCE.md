@@ -2,18 +2,18 @@
 Date: 2026-11-20
 
 ## Non-negotiable production policy
-MQ Mailer is a **separate web application** intended for `https://mail.mahquantum.tech`. It must not take over inbound email for `@mahquantum.tech` from Zoho Mail without an explicit, tested migration decision. Keep all live Zoho mailboxes, MX records, SPF, DKIM, DMARC, and existing website records unchanged.
+MQ Mailer is a **separate web application** intended for `https://mailer.mahquantum.tech`. It must not take over inbound email for `@mahquantum.tech` from Zoho Mail without an explicit, tested migration decision. Keep all live Zoho mailboxes, MX records, SPF, DKIM, DMARC, and existing website records unchanged.
 
 **DO NOT** enable Cloudflare Email Routing on the `mahquantum.tech` apex or replace the Zoho MX records. Cloudflare Email Routing requires its own MX records for that domain, so it cannot be turned on for the same apex alongside Zoho's MX while preserving normal Zoho delivery.
 
 **DO NOT** add Cloudflare's MX records as lower-priority 'fallbacks'. MX priority is NOT a provider mailbox split or a reliable mirroring mechanism.
 
 ## Separate website hostname versus email delivery
-- `mail.mahquantum.tech` is the **HTTPS user interface**, not the SMTP mailbox delivery service.
+- `mailer.mahquantum.tech` is the **HTTPS user interface**, not the SMTP mailbox delivery service.
 - Employee addresses such as `ceo@mahquantum.tech` continue to be delivered by **Zoho** while Zoho remains the MX destination.
 - The current upstream-derived MQ Mailer **does not automatically synchronize Zoho mailboxes**. Its inbound Cloudflare Worker email handler receives messages only if mail is actually routed to it.
 - To see Zoho messages in MQ Mailer while keeping Zoho as the provider, implement a proper **Zoho Mail integration** (OAuth/API or supported IMAP, depending on Zoho plan and capabilities), with independent per-employee authorization and retention controls. A mailbox created in MQ Mailer is not automatically a live Zoho email address.
-- For *new* addresses that must be hosted outside Zoho, use a dedicated email subdomain (for example `@inbox.mahquantum.tech`) with separately configured MX/Cloudflare Email Routing, subject to its current supported subdomain setup. This will not automatically create `@mahquantum.tech` mailboxes.
+- **Chosen MQ-Mailer email domain:** `@international.mahquantum.tech`, configured via Cloudflare Email Routing's subdomain settings, with independent MX and routing rules. It does not modify Zoho's apex-domain mailboxes.
 - A selective Zoho forwarding route can duplicate approved messages to a configured external inbox after verifying the forwarding destination. Zoho forwarding does not remove the need for a receiving provider and does not migrate mailboxes by itself.
 
 ## DNS migration safety
@@ -29,7 +29,7 @@ The scanner also proposed `mx.zoho.in.mahquantum.tech` as a malformed-looking ex
 
 The scan is NOT comprehensive. Other subdomains such as website/research/workspace applications may have records that a scan missed. Export the *entire* Namify DNS zone, compare line-by-line, import to Cloudflare with correct proxying, and validate TXT, SPF, DKIM, MX, CNAME/A/AAAA, ACME and subdomains BEFORE ever switching authoritative nameservers.
 
-Cloudflare Workers Custom Domain requires an active Cloudflare zone and creates the routing record itself; **do not pre-create a CNAME for `mail`**. The scan also found TXT records at `mail.mahquantum.tech`; a CNAME at that same name is incompatible with existing TXT records. Plan the Custom Domain with Cloudflare's supported record type or choose a different hostname if needed.
+Cloudflare Workers Custom Domain requires an active Cloudflare zone and creates the routing record itself; **do not pre-create a CNAME for `mailer`**. Existing TXT records at `mail.mahquantum.tech` are unrelated and should remain untouched.
 
 Do not use a raw CNAME from Namify to `mq-mailer.mahquantum.workers.dev` as though it provided a valid Workers Custom Domain with correct TLS.
 
@@ -40,7 +40,10 @@ Do not use a raw CNAME from Namify to `mq-mailer.mahquantum.workers.dev` as thou
 4. The R2-free D1 adapter is bounded storage and must pass runtime checks; do not use with real business email until tested.
 5. Configure and verify Access JWT settings and real employee isolation, backups, attachment limits, recovery and security.
 6. If shifting DNS hosting to Cloudflare later, first copy/verify all DNS records. Then attach a Worker Custom Domain for the HTTPS application **without changing Zoho MX**.
-7. A supported outbound email service and Zoho mailbox synchronization require separate setup and permissions. No commercial sender was activated.
+7. Configure Email Routing for **international subdomain only**, with explicit recipient rules to the Worker, after validating the Cloudflare zone. Do not enable apex routing.
+8. A supported outbound email service requires separate setup and permission. No commercial sender was activated.
+
+See [INTERNATIONAL-DEPLOYMENT.md](INTERNATIONAL-DEPLOYMENT.md).
 
 Reference documentation:
 - https://developers.cloudflare.com/email-service/configuration/domains/

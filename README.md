@@ -12,13 +12,21 @@ Independent, self-hosted email and AI inbox based on [Cloudflare Agentic Inbox](
 
 The new Cloudflare DNS zone is pending, with no active imported records. **Do not change the Namify nameservers until the existing zone is fully copied and verified** (Zoho, SPF/DKIM/DMARC, Vercel, and all other subdomains). No public mail website is deployed yet.
 
+## Dedicated international mail domain and webmail address
+
+- **New MQ Mailer mailbox addresses:** `@international.mahquantum.tech`.
+- **Planned protected website:** `https://mailer.mahquantum.tech`.
+- **Zoho existing addresses:** `@mahquantum.tech` — leave MX, SPF, DKIM and DMARC untouched.
+
+Cloudflare Email Routing supports a separately configured **international** subdomain. Do not enable apex routing on Zoho. The full [international deployment guide](docs/INTERNATIONAL-DEPLOYMENT.md) explains the DNS prerequisites, free-tier limitations, and routing rules. Neither domain is live in MQ-Mailer yet.
+
 ## Stack
 
 - UI: React 19 + React Router 7 + Tailwind CSS + Cloudflare Kumo
 - Backend: Cloudflare Workers + Hono
 - Mailbox data: Durable Objects / SQLite
 - Attachments and mailbox metadata: Cloudflare D1 limited object adapter (6 MiB per object, free-tier quota limits)
-- Incoming email: Cloudflare Worker email handler exists, but cannot receive apex-domain Zoho mail until a separate forwarding/integration architecture is configured
+- Incoming email: Cloudflare Worker email handler exists; targets international subdomain routing only, not existing Zoho mail
 - Outgoing email: disabled until an approved provider integration is configured; no Cloudflare Email Service binding in the free-tier Wrangler setup
 - Outgoing **ordinary business correspondence**: requires an additional compliant, permitted email-sending provider/adapter; **not implemented yet**
 - AI: Cloudflare Workers AI and the Agents SDK
@@ -51,13 +59,13 @@ Administrators can create mailboxes and assign an owner using the owner's exact 
 
 Employee AI/MCP access is intentionally blocked until its tools and sessions support fine-grained authorization.
 
-Run `npm test` for authorization regression tests. See [docs/CUSTOM-DOMAIN.md](docs/CUSTOM-DOMAIN.md) before creating any CNAME for `mail.mahquantum.tech`.
+Run `npm test` for authorization regression tests. See [docs/CUSTOM-DOMAIN.md](docs/CUSTOM-DOMAIN.md) before creating any CNAME for `mailer.mahquantum.tech`.
 
 ## Known limitations and release gates
 
 - Mailbox owner/member ACLs are enforced on the HTTP webmail API. Employee AI/MCP is deliberately disabled, and real Cloudflare Access security tests are still required.
 - Sending is unavailable until a permitted outbound provider is integrated and delivery has been tested.
-- Existing Zoho MX records must not be changed. The Worker cannot receive those messages directly; integrate Zoho or use a separate inbound subdomain/verified forwarding route.
+- Existing Zoho MX records must not be changed. The Worker will receive only international subdomain mail after explicit Email Routing is activated.
 - This repository does not include or back up live email messages, D1 data, or Durable Object data. Configure operational backups separately.
 - The copied upstream demo screenshot and generic favicon.ico are intentionally not carried forward, replaced with our own branding and documentation.
 - Production validation, backups, incident response, DKIM/SPF/DMARC, and abuse monitoring remain to be performed.
