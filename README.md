@@ -4,7 +4,7 @@ Independent, self-hosted email and AI inbox based on [Cloudflare Agentic Inbox](
 
 **Source ownership:** All application source files are stored in this repository. It is not a Git submodule, hosted iframe, or dependency on the continued existence of the upstream repository. The project preserves upstream Apache-2.0 licensing and attribution; see [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
-**Current phase:** Administrator-only pilot. **Do not add employee accounts or enable broad Cloudflare Access policies yet.** Upstream has no per-mailbox access control; in this version production requests additionally require an exact-match admin email via `MQ_ADMIN_EMAIL`.
+**Current phase:** Employee mailbox isolation is implemented and CI-tested, but **not production-deployed or verified with real Cloudflare Access identities**. The AI and MCP interfaces remain administrator-only.
 
 ## Stack
 
@@ -16,7 +16,7 @@ Independent, self-hosted email and AI inbox based on [Cloudflare Agentic Inbox](
 - Outgoing transactional email: Cloudflare Email Service sending binding (provider onboarding required)
 - Outgoing **ordinary business correspondence**: requires an additional compliant, permitted email-sending provider/adapter; **not implemented yet**
 - AI: Cloudflare Workers AI and the Agents SDK
-- Authentication: Cloudflare Access with validated JWT, plus an administrator identity restriction
+- Authentication: Cloudflare Access with validated JWT and owner/member mailbox ACLs; administrator configured by `MQ_ADMIN_EMAIL`
 - Source and CI: GitHub (`Niroop-H/MQ-Mailer`)
 - Vercel: reserved for a **separate optional future administration site**; this React Router/Worker runtime must not be redeployed as a Vercel Next.js application.
 
@@ -39,9 +39,17 @@ Product: **MQ Mailer / MAH Quantum Mail**. This copy changes the branding and ad
 
 Cloudflare Email Service is documented for **transactional email only**; it must not be assumed to support general employee/business correspondence. Before using MQ Mailer as a full replacement for a commercial mailbox provider, implement and test a permitted general-purpose outbound delivery provider and complete SPF/DKIM/DMARC setup.
 
+## Employee mailbox access
+
+Administrators can create mailboxes and assign an owner using the owner's exact **Cloudflare Access login email**. Shared members are added in **Settings → Employee access & shared mailboxes**. Employees see only assigned mailboxes and cannot modify access policies or create/delete mailboxes. Legacy mailboxes without assignments remain admin-only.
+
+Employee AI/MCP access is intentionally blocked until its tools and sessions support fine-grained authorization.
+
+Run `npm test` for authorization regression tests. See [docs/CUSTOM-DOMAIN.md](docs/CUSTOM-DOMAIN.md) before creating any CNAME for `mail.mahquantum.tech`.
+
 ## Known limitations and release gates
 
-- There is currently no tenant or per-mailbox RBAC. Until implemented across HTTP API, agents, and MCP, only a single designated administrator can be permitted in production.
+- Mailbox owner/member ACLs are enforced on the HTTP webmail API. Employee AI/MCP is deliberately disabled, and real Cloudflare Access security tests are still required.
 - Sending is not ready until Cloudflare Email Service has approved the sender domain, the binding is enabled, and delivery has been tested.
 - Receiving is not ready until Email Routing DNS/MX records are correctly configured. **Do not overwrite existing MX records without a migration plan.**
 - This repository does not include or back up live email messages, R2 objects, or Durable Object data. Configure operational backups separately.
