@@ -1,0 +1,12 @@
+MAH Quantum Mail (MQ Mailer)
+
+This product contains software derived from Cloudflare Agentic Inbox.
+Original project: https://github.com/cloudflare/agentic-inbox
+Original copyright: Copyright (c) 2026 Cloudflare, Inc.
+Original software license: Apache License, Version 2.0 (see LICENSE).
+
+MAH Quantum modifications include product branding, configuration for independent
+hosting, documentation, and an additional single-administrator authorization
+requirement. The origin copyright headers in modified source files are preserved.
+
+The project is not an official Cloudflare product and is not endorsed by Cloudflare.
