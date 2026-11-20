@@ -2,6 +2,14 @@
 
 The intended public address is **https://mail.mahquantum.tech**.
 
+## Existing Zoho Mail must remain active
+
+**Do not alter the existing Zoho MX records, SPF, DKIM, DMARC or the Namify nameservers yet.** The Cloudflare DNS zone was created on 2026-11-20 but is **pending**, with zero active imported DNS records. Its initial scan found 15 candidate records, but this cannot prove all subdomains were found. Compare the authoritative Namify DNS zone before any switch.
+
+MQ Mailer's HTTPS hostname `mail.mahquantum.tech` does NOT determine delivery of emails addressed to `@mahquantum.tech`. Those continue to reach Zoho until the company intentionally changes MX. See [ZOHO-COEXISTENCE.md](ZOHO-COEXISTENCE.md).
+
+The scan also found existing TXT records at `mail.mahquantum.tech` for outbound-mail verification. A CNAME cannot coexist with TXT at the same hostname. Do not save the Namify CNAME currently being drafted.
+
 ## Important DNS clarification
 
 Cloudflare Workers **Custom Domains** work only on a hostname in an **active Cloudflare DNS zone owned by the account**. Adding a DNS CNAME by itself does **not** register the hostname with Cloudflare Workers, and Cloudflare documentation specifically disallows attaching a Workers Custom Domain to a hostname that already has a CNAME record.
@@ -13,7 +21,7 @@ If the domain must remain at another DNS provider, choose a supported, separatel
 ## Critical distinction: website versus email routing
 
 - **Website:** `mail.mahquantum.tech` opens the protected MQ Mailer web application. It needs Worker custom-domain routing and Cloudflare Access.
-- **Email:** `employee@mahquantum.tech` receives messages only after Cloudflare Email Routing and the relevant **MX records** are correctly configured for `mahquantum.tech`.
+- **Email:** `employee@mahquantum.tech` currently continues to receive through **Zoho**. MQ Mailer cannot directly receive it with the existing code; a separate Zoho integration or independently routed inbound subdomain is needed.
 - **Sending:** SMTP/provider acceptance, SPF/DKIM/DMARC, sender/domain verification, and a legitimate general-purpose outgoing email service are separate requirements. The copied Cloudflare Email Service implementation is **transactional**, not a general business mail provider.
 
 Do not modify existing MX records until you verify whether current employee email already uses another provider.
@@ -30,6 +38,6 @@ Do not modify existing MX records until you verify whether current employee emai
 
 ## Current account status
 
-The connected Cloudflare account had no `mahquantum.tech` zone in the exact-name lookup at the time of inspection. Consequently a Custom Domain could **not** be provisioned from that account in this session. Neither DNS, MX nor billing settings were changed.
+A new Free-plan Cloudflare zone for `mahquantum.tech` was created on 2026-11-20 and is still pending nameserver activation. Do not activate it before DNS migration checks. No live MQ Mailer Worker custom domain has been provisioned.
 
 Official documentation: https://developers.cloudflare.com/workers/configuration/routing/custom-domains/

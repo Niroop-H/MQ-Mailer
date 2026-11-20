@@ -6,14 +6,20 @@ Independent, self-hosted email and AI inbox based on [Cloudflare Agentic Inbox](
 
 **Current phase:** Employee mailbox isolation is implemented and CI-tested, but **not production-deployed or verified with real Cloudflare Access identities**. The AI and MCP interfaces remain administrator-only.
 
+## Current coexistence policy — Zoho continues to receive @mahquantum.tech
+
+**Do not switch MX or activate Cloudflare Email Routing on the root domain.** Existing Zoho MX records must remain in place. MQ Mailer will be a separate web interface, not a replacement for Zoho's delivery. Synchronizing Zoho mailbox contents to this UI requires an additional authorized Zoho API/IMAP integration that is **not implemented**. See [Zoho coexistence guide](docs/ZOHO-COEXISTENCE.md).
+
+The new Cloudflare DNS zone is pending, with no active imported records. **Do not change the Namify nameservers until the existing zone is fully copied and verified** (Zoho, SPF/DKIM/DMARC, Vercel, and all other subdomains). No public mail website is deployed yet.
+
 ## Stack
 
 - UI: React 19 + React Router 7 + Tailwind CSS + Cloudflare Kumo
 - Backend: Cloudflare Workers + Hono
 - Mailbox data: Durable Objects / SQLite
-- Attachments and mailbox metadata: Cloudflare R2
-- Incoming email: Cloudflare Email Routing → Worker email handler
-- Outgoing transactional email: Cloudflare Email Service sending binding (provider onboarding required)
+- Attachments and mailbox metadata: Cloudflare D1 limited object adapter (6 MiB per object, free-tier quota limits)
+- Incoming email: Cloudflare Worker email handler exists, but cannot receive apex-domain Zoho mail until a separate forwarding/integration architecture is configured
+- Outgoing email: disabled until an approved provider integration is configured; no Cloudflare Email Service binding in the free-tier Wrangler setup
 - Outgoing **ordinary business correspondence**: requires an additional compliant, permitted email-sending provider/adapter; **not implemented yet**
 - AI: Cloudflare Workers AI and the Agents SDK
 - Authentication: Cloudflare Access with validated JWT and owner/member mailbox ACLs; administrator configured by `MQ_ADMIN_EMAIL`
@@ -23,9 +29,9 @@ Independent, self-hosted email and AI inbox based on [Cloudflare Agentic Inbox](
 ## Quick start
 
 1. `npm ci`
-2. Configure `wrangler.jsonc` (domain and bucket). Ensure the R2 bucket exists, e.g. `npx wrangler r2 bucket create mq-mailer` and `npx wrangler r2 bucket create mq-mailer-preview`.
+2. Configure `wrangler.jsonc`; dedicated D1 database `mq-mailer-free` is already created and its storage tables initialized. Do not activate R2 billing.
 3. `npm run dev` for local UI work.
-4. Follow **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for protected Cloudflare deployment and Email Routing.
+4. Follow **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** and **[docs/ZOHO-COEXISTENCE.md](docs/ZOHO-COEXISTENCE.md)** for protected Cloudflare deployment without disrupting Zoho.
 
 Build and type checks: `npm run build` and `npm run typecheck`.
 
@@ -50,9 +56,9 @@ Run `npm test` for authorization regression tests. See [docs/CUSTOM-DOMAIN.md](d
 ## Known limitations and release gates
 
 - Mailbox owner/member ACLs are enforced on the HTTP webmail API. Employee AI/MCP is deliberately disabled, and real Cloudflare Access security tests are still required.
-- Sending is not ready until Cloudflare Email Service has approved the sender domain, the binding is enabled, and delivery has been tested.
-- Receiving is not ready until Email Routing DNS/MX records are correctly configured. **Do not overwrite existing MX records without a migration plan.**
-- This repository does not include or back up live email messages, R2 objects, or Durable Object data. Configure operational backups separately.
+- Sending is unavailable until a permitted outbound provider is integrated and delivery has been tested.
+- Existing Zoho MX records must not be changed. The Worker cannot receive those messages directly; integrate Zoho or use a separate inbound subdomain/verified forwarding route.
+- This repository does not include or back up live email messages, D1 data, or Durable Object data. Configure operational backups separately.
 - The copied upstream demo screenshot and generic favicon.ico are intentionally not carried forward, replaced with our own branding and documentation.
 - Production validation, backups, incident response, DKIM/SPF/DMARC, and abuse monitoring remain to be performed.
 
