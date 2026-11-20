@@ -38,9 +38,10 @@ export interface SendEmailParams {
  * @throws On validation or delivery errors (error has `.code` property)
  */
 export async function sendEmail(
-	binding: SendEmail,
+	binding: SendEmail | undefined,
 	params: SendEmailParams,
 ): Promise<{ messageId: string }> {
+	if (!binding) throw new Error("Outbound provider not configured (no payment or commercial sending provider has been activated)");
 	const message: Record<string, unknown> = {
 		to: params.to,
 		from: params.from,

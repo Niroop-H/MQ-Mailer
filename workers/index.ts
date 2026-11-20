@@ -378,7 +378,8 @@ app.get("/api/v1/mailboxes/:mailboxId/emails/:emailId/attachments/:attachmentId"
 
 // -- Receive inbound email ------------------------------------------
 
-const MAX_EMAIL_SIZE = 25 * 1024 * 1024;
+// Free D1 mode is intentionally constrained; reject oversized mail instead of storing it partially.
+const MAX_EMAIL_SIZE = 6 * 1024 * 1024;
 
 async function streamToArrayBuffer(stream: ReadableStream, streamSize: number) {
 	if (streamSize > MAX_EMAIL_SIZE) throw new Error(`Email too large: ${streamSize} bytes exceeds ${MAX_EMAIL_SIZE} byte limit`);

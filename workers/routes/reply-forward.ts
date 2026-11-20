@@ -4,6 +4,7 @@
 
 import type { Context } from "hono";
 import { sendEmail } from "../email-sender";
+import { getBucket } from "../lib/d1-bucket";
 import { storeAttachments } from "../lib/attachments";
 import type { EmailFull } from "../lib/schemas";
 import {

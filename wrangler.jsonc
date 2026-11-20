@@ -16,17 +16,11 @@
 		"DOMAINS": "mahquantum.tech",
 		"EMAIL_ADDRESSES": []
 	},
-	"send_email": [
+	"d1_databases": [
 		{
-			"name": "EMAIL",
-			"remote": true
-		}
-	],
-	"r2_buckets": [
-		{
-			"binding": "BUCKET",
-			"bucket_name": "mq-mailer",
-			"preview_bucket_name": "mq-mailer-preview"
+			"binding": "D1_MAIL",
+			"database_name": "mq-mailer-free",
+			"database_id": "ee9d74b5-46d8-437e-a2a2-80d6e1dbdc66"
 		}
 	],
 	"ai": {
