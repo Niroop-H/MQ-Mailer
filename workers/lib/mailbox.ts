@@ -10,6 +10,7 @@
 import { createMiddleware } from "hono/factory";
 import type { MailboxDO } from "../durableObject";
 import type { Env } from "../types";
+import { getBucket } from "./d1-bucket";
 import { canAccessMailbox, loadMailboxAccess, normalizeMailboxId, type MailIdentity } from "./access-control";
 
 export type MailboxContext = {
@@ -30,7 +31,7 @@ export const requireMailbox = createMiddleware<MailboxContext>(async (c, next) =
 
 	// Verify mailbox exists
 	const key = `mailboxes/${mailboxId}.json`;
-	const obj = await c.env.BUCKET.head(key);
+	const obj = await getBucket(c.env).head(key);
 	if (!obj) {
 		return c.json({ error: "Not found" }, 404);
 	}
@@ -38,7 +39,7 @@ export const requireMailbox = createMiddleware<MailboxContext>(async (c, next) =
 	// The mailbox ACL lives in a separate R2 record and cannot be modified
 	// through the general mailbox settings API. Missing or malformed ACLs
 	// allow the administrator only (legacy mailboxes fail closed).
-	const access = await loadMailboxAccess(c.env.BUCKET, mailboxId);
+	const access = await loadMailboxAccess(getBucket(c.env), mailboxId);
 	if (!canAccessMailbox(c.var.mqIdentity, access)) {
 		return c.json({ error: "Mailbox access denied" }, 403);
 	}

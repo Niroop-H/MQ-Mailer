@@ -6,7 +6,6 @@
  * Shared attachment storage logic.
  * Eliminates the triplicated atob → Uint8Array → R2.put pattern.
  */
-import type { Env } from "../types";
 
 export interface StoredAttachment {
 	id: string;
@@ -22,7 +21,7 @@ export interface StoredAttachment {
  * Store base64-encoded attachments to R2 and return metadata for the DO.
  */
 export async function storeAttachments(
-	bucket: Env["BUCKET"],
+	bucket: R2Bucket,
 	emailId: string,
 	attachments?: {
 		content: string;

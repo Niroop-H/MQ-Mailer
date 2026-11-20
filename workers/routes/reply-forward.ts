@@ -53,7 +53,7 @@ export async function handleReplyEmail(c: AppContext) {
 		return c.json({ error: rateLimitError }, 429);
 	}
 
-	const attachmentData = await storeAttachments(c.env.BUCKET, messageId, attachments);
+	const attachmentData = await storeAttachments(getBucket(c.env), messageId, attachments);
 
 	try {
 		await sendEmail(c.env.EMAIL, {
@@ -144,7 +144,7 @@ export async function handleForwardEmail(c: AppContext) {
 		return c.json({ error: rateLimitError }, 429);
 	}
 
-	const attachmentData = await storeAttachments(c.env.BUCKET, messageId, attachments);
+	const attachmentData = await storeAttachments(getBucket(c.env), messageId, attachments);
 
 	try {
 		await sendEmail(c.env.EMAIL, {
