@@ -87,6 +87,8 @@ function del<T>(url: string) {
 
 // ---------- Typed response shapes ----------
 
+export interface MailboxAccessPolicy { ownerEmail: string; members: string[] }
+
 interface EmailListResponse {
 	emails: Email[];
 	totalCount: number;
@@ -97,12 +99,14 @@ interface EmailListResponse {
 const api = {
 	// Config
 	getConfig: () =>
-		get<{ domains: string[]; emailAddresses: string[] }>("/api/v1/config"),
+		get<{ domains: string[]; emailAddresses: string[]; isAdmin: boolean; signedInEmail: string }>("/api/v1/config"),
 
 	// Mailboxes
 	listMailboxes: () => get<Mailbox[]>("/api/v1/mailboxes"),
-	createMailbox: (email: string, name: string, settings?: unknown) =>
-		post<Mailbox>("/api/v1/mailboxes", { email, name, settings }),
+	createMailbox: (email: string, name: string, settings?: unknown, ownerEmail?: string) =>
+		post<Mailbox>("/api/v1/mailboxes", { email, name, settings, ownerEmail: ownerEmail || email }),
+	getMailboxAccess: (mailboxId: string) => get<MailboxAccessPolicy | null>(`/api/v1/mailboxes/${mailboxId}/access`),
+	updateMailboxAccess: (mailboxId: string, access: MailboxAccessPolicy) => put<MailboxAccessPolicy>(`/api/v1/mailboxes/${mailboxId}/access`, access),
 	getMailbox: (mailboxId: string) =>
 		get<Mailbox>(`/api/v1/mailboxes/${mailboxId}`),
 	updateMailbox: (mailboxId: string, settings: unknown) =>

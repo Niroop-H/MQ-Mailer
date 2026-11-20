@@ -42,11 +42,13 @@ export default function HomeRoute() {
 
 	const domains = configData?.domains ?? [];
 	const emailAddresses = configData?.emailAddresses ?? [];
+	const isAdmin = configData?.isAdmin === true;
 
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [newPrefix, setNewPrefix] = useState("");
 	const [selectedDomain, setSelectedDomain] = useState("");
 	const [newName, setNewName] = useState("");
+	const [ownerEmail, setOwnerEmail] = useState("");
 	const [isCreating, setIsCreating] = useState(false);
 	const [createError, setCreateError] = useState<string | null>(null);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -91,6 +93,7 @@ export default function HomeRoute() {
 
 	const handleCreate = async (e: FormEvent) => {
 		e.preventDefault();
+		if (!isAdmin) return;
 		setCreateError(null);
 		if (!newPrefix || !selectedDomain) {
 			setCreateError("Please fill in all fields");
@@ -100,11 +103,12 @@ export default function HomeRoute() {
 		const name = newName || newPrefix;
 		setIsCreating(true);
 		try {
-			await createMailbox.mutateAsync({ email, name });
+			await createMailbox.mutateAsync({ email, name, ownerEmail: ownerEmail.trim() || email });
 			toastManager.add({ title: "Mailbox created successfully!" });
 			setIsCreateOpen(false);
 			setNewPrefix("");
 			setNewName("");
+			setOwnerEmail("");
 		} catch (err: unknown) {
 			const message = (err instanceof Error ? err.message : null) || "Failed to create mailbox";
 			setCreateError(message);
@@ -129,13 +133,8 @@ export default function HomeRoute() {
 	};
 
 	const isConfigured = emailAddresses.length > 0;
-	const accounts = isConfigured
-		? emailAddresses.map((addr) => ({
-				id: addr,
-				email: addr,
-				name: addr.split("@")[0] || addr,
-			}))
-		: mailboxes;
+	// Never display configured-but-uncreated mailboxes as actual employee inboxes.
+	const accounts = mailboxes;
 
 	const isLoading = !configData;
 
@@ -146,7 +145,7 @@ export default function HomeRoute() {
 					<div className="mq-identity mb-6"><img src="/favicon.svg" alt="" className="mq-identity-icon" /><div><p className="mq-identity-overline">MAH QUANTUM</p><p className="mq-identity-title">MQ Mailer</p><p className="mq-identity-subtitle">Your secure communications workspace</p></div></div>
 					<div className="flex items-center justify-between">
 						<h1 className="text-2xl font-bold text-kumo-default">Mailboxes</h1>
-						{!isConfigured && (
+						{isAdmin && !isConfigured && (
 							<Button
 								variant="primary"
 								icon={<PlusIcon size={16} />}
@@ -188,7 +187,7 @@ export default function HomeRoute() {
 										{account.email}
 									</div>
 								</div>
-								{!isConfigured && (
+								{isAdmin && !isConfigured && (
 									<Button
 										variant="ghost"
 										size="sm"
@@ -292,6 +291,13 @@ export default function HomeRoute() {
 								)}
 							</div>
 						</div>
+						<Input
+							label="Employee Cloudflare Access sign-in email (optional)"
+							placeholder="employee@example.com — defaults to mailbox address"
+							size="sm"
+							value={ownerEmail}
+							onChange={(e) => setOwnerEmail(e.target.value)}
+						/>
 						<Input
 							label="Display Name (optional)"
 							placeholder="Info"
