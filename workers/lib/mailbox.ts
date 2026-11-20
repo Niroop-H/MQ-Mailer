@@ -11,6 +11,7 @@ import { createMiddleware } from "hono/factory";
 import type { MailboxDO } from "../durableObject";
 import type { Env } from "../types";
 import { getBucket } from "./d1-bucket";
+import { isManagedMailbox } from "./mail-domains";
 import { canAccessMailbox, loadMailboxAccess, normalizeMailboxId, type MailIdentity } from "./access-control";
 
 export type MailboxContext = {
@@ -28,6 +29,7 @@ export const requireMailbox = createMiddleware<MailboxContext>(async (c, next) =
 	const mailboxId = normalizeMailboxId(rawId);
 	if (!mailboxId || rawId !== mailboxId) return c.json({ error: "Invalid mailbox" }, 400);
 	if (!c.var.mqIdentity) return c.json({ error: "Authentication required" }, 403);
+	if (!isManagedMailbox(mailboxId, c.env.DOMAINS)) return c.json({ error: "Mailbox belongs to another email provider" }, 403);
 
 	// Verify mailbox exists
 	const key = `mailboxes/${mailboxId}.json`;

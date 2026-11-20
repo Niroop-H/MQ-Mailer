@@ -20,6 +20,7 @@ import { handleReplyEmail, handleForwardEmail } from "./routes/reply-forward";
 import { Folders } from "../shared/folders";
 import type { Env } from "./types";
 import { getBucket } from "./lib/d1-bucket";
+import { isManagedMailbox } from "./lib/mail-domains";
 import { requireMailbox, type MailboxContext } from "./lib/mailbox";
 import { canAccessMailbox, loadMailboxAccess, mailboxAccessKey, normalizeMailboxId, saveMailboxAccess, parseMailboxAccess } from "./lib/access-control";
 
@@ -117,8 +118,7 @@ app.post("/api/v1/mailboxes", async (c) => {
 	const { name, settings, ownerEmail, members, email: rawEmail } = CreateMailboxBody.parse(await c.req.json());
 	const email = normalizeMailboxId(rawEmail);
 	if (!email) return c.json({ error: "Invalid mailbox address" }, 400);
-	const allowedDomains = (c.env.DOMAINS || "").split(",").map((domain) => domain.trim().toLowerCase());
-	if (!allowedDomains.includes(email.split("@")[1])) return c.json({ error: "Domain is not configured for mail" }, 403);
+	if (!isManagedMailbox(email, c.env.DOMAINS)) return c.json({ error: "Only the configured international mailbox domain is supported" }, 403);
 	const allowedAddresses = (c.env.EMAIL_ADDRESSES ?? []) as string[];
 	if (allowedAddresses.length > 0 && !allowedAddresses.map((a) => a.toLowerCase()).includes(email)) {
 		return c.json({ error: "Mailbox creation is restricted to configured EMAIL_ADDRESSES" }, 403);
@@ -414,6 +414,7 @@ async function receiveEmail(event: { raw: ReadableStream; rawSize: number }, env
 		if (!mailboxId) { console.log(`Ignoring email: no recipient matches EMAIL_ADDRESSES.`); return; }
 	} else { mailboxId = allRecipients[0]; }
 	if (!mailboxId) throw new Error("received email with no valid recipient address");
+	if (!isManagedMailbox(mailboxId, env.DOMAINS)) throw new Error("Incoming email recipient is outside the configured MQ-Mailer domain");
 
 	const messageId = crypto.randomUUID();
 	if (!(await getBucket(env).head(`mailboxes/${mailboxId}.json`))) { console.log(`Ignoring email for ${mailboxId}: mailbox does not exist`); return; }

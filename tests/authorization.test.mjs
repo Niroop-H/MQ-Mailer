@@ -22,15 +22,15 @@ process.on("exit", () => { /* ephemeral test files are cleaned below */ });
 
 test.after(async () => { await rm(buildDir, {recursive: true, force: true}); });
 
-const alice = "alice@mahquantum.tech";
-const bob = "bob@mahquantum.tech";
+const alice = "alice@international.mahquantum.tech";
+const bob = "bob@international.mahquantum.tech";
 const admin = "founder@gmail.com";
 
 function mockBucket() {
   const records = new Map([
     [`mailboxes/${alice}.json`, JSON.stringify({fromName:"Alice"})],
     [`mailboxes/${bob}.json`, JSON.stringify({fromName:"Bob"})],
-    [`mailboxes/${"legacy@mahquantum.tech"}.json`, "{}"],
+    [`mailboxes/${"legacy@international.mahquantum.tech"}.json`, "{}"],
     [`mailbox-acl/${alice}.json`, JSON.stringify({ownerEmail:alice, members:["shared@gmail.com"]})],
     [`mailbox-acl/${bob}.json`, JSON.stringify({ownerEmail:bob, members:[]})],
   ]);
@@ -56,13 +56,13 @@ function makeApp(identity, bucket = mockBucket()) {
   api.get("/api/v1/mailboxes/:mailboxId/emails/:id/attachments/:attachmentId", c => c.json({ok:true}));
   api.post("/api/v1/mailboxes/:mailboxId/emails", c => c.json({ok:true}));
   parent.route("/", api);
-  const env = { BUCKET: bucket, MAILBOX: {idFromName: name => name, get: name => ({ name })} };
+  const env = { DOMAINS: "international.mahquantum.tech", BUCKET: bucket, MAILBOX: {idFromName: name => name, get: name => ({ name })} };
   return path => parent.request(path, {}, env);
 }
 
 test("normalizes signed-in identities and rejects malformed mailbox identifiers", () => {
   assert.equal(acl.normalizeIdentity(" Alice@MAHQUANTUM.TECH "), alice);
-  for (const v of ["", null, "../bob@mahquantum.tech", "bob@other.com/path", "bob@evil..com", "no-at-sign"]) {
+  for (const v of ["", null, "../bob@international.mahquantum.tech", "bob@other.com/path", "bob@evil..com", "no-at-sign"]) {
     assert.equal(acl.normalizeMailboxId(v), null);
   }
 });
@@ -93,13 +93,13 @@ test("bob is limited to bob's mailbox, and assigned members may open Alice's", a
 });
 
 test("legacy/unassigned mailbox remains inaccessible until admin assigns owner", async () => {
-  assert.equal((await makeApp({email:alice,isAdmin:false})("/api/v1/mailboxes/legacy@mahquantum.tech")).status,403);
-  assert.equal((await makeApp({email:admin,isAdmin:true})("/api/v1/mailboxes/legacy@mahquantum.tech")).status,200);
+  assert.equal((await makeApp({email:alice,isAdmin:false})("/api/v1/mailboxes/legacy@international.mahquantum.tech")).status,403);
+  assert.equal((await makeApp({email:admin,isAdmin:true})("/api/v1/mailboxes/legacy@international.mahquantum.tech")).status,200);
 });
 
 test("unauthenticated actors and unknown mailboxes fail closed", async () => {
   assert.equal((await makeApp(null)(`/api/v1/mailboxes/${alice}`)).status,403);
-  assert.equal((await makeApp({email:alice,isAdmin:false})("/api/v1/mailboxes/notfound@mahquantum.tech")).status,404);
+  assert.equal((await makeApp({email:alice,isAdmin:false})("/api/v1/mailboxes/notfound@international.mahquantum.tech")).status,404);
 });
 
 test("admin assignment updates/revocations are effective immediately on next request", async () => {
@@ -110,4 +110,10 @@ test("admin assignment updates/revocations are effective immediately on next req
   assert.equal((await request(`/api/v1/mailboxes/${bob}`)).status,200);
   await acl.saveMailboxAccess(bucket,bob,{ownerEmail:bob,members:[]});
   assert.equal((await request(`/api/v1/mailboxes/${bob}`)).status,403);
+});
+
+test("Zoho root-domain mailboxes are never accessible through international MQ Mailer", async () => {
+  const request = makeApp({email:admin,isAdmin:true});
+  const response = await request("/api/v1/mailboxes/ceo@mahquantum.tech");
+  assert.equal(response.status, 403);
 });

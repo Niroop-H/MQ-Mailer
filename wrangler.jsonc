@@ -12,8 +12,9 @@
 	"vars": {
 		// Production deploys must also define POLICY_AUD, TEAM_DOMAIN and MQ_ADMIN_EMAIL.
 		// TEAM_DOMAIN may be the base Access URL or the full /cdn-cgi/access/certs URL.
-		// The worker now fails closed outside local development if Access is not configured.
-		"DOMAINS": "mahquantum.tech",
+		// The worker fails closed in production without Access configuration.
+		// Existing Zoho @mahquantum.tech accounts are NOT hosted by this Worker.
+		"DOMAINS": "international.mahquantum.tech",
 		"EMAIL_ADDRESSES": []
 	},
 	"d1_databases": [
