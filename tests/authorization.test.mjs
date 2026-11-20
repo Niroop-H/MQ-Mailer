@@ -14,10 +14,10 @@ await build({
   outdir: buildDir,
   outbase: "workers/lib",
   bundle: true, platform: "node", format: "esm", target: "node22",
-  external: ["hono", "hono/factory"],
+  outExtension: { ".js": ".mjs" },
 });
-const acl = await import(pathToFileURL(path.join(buildDir, "access-control.js")).href);
-const { requireMailbox } = await import(pathToFileURL(path.join(buildDir, "mailbox.js")).href);
+const acl = await import(pathToFileURL(path.join(buildDir, "access-control.mjs")).href);
+const { requireMailbox } = await import(pathToFileURL(path.join(buildDir, "mailbox.mjs")).href);
 process.on("exit", () => { /* ephemeral test files are cleaned below */ });
 
 test.after(async () => { await rm(buildDir, {recursive: true, force: true}); });

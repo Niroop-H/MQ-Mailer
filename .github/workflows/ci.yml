@@ -23,5 +23,7 @@ jobs:
         run: npm ci
       - name: Type-check Cloudflare runtime and React Router
         run: npm run typecheck
+      - name: Mailbox isolation regression tests
+        run: npm test
       - name: Production build
         run: npm run build
