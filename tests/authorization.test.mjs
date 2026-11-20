@@ -61,7 +61,7 @@ function makeApp(identity, bucket = mockBucket()) {
 }
 
 test("normalizes signed-in identities and rejects malformed mailbox identifiers", () => {
-  assert.equal(acl.normalizeIdentity(" Alice@MAHQUANTUM.TECH "), alice);
+  assert.equal(acl.normalizeIdentity(" Alice@INTERNATIONAL.MAHQUANTUM.TECH "), alice);
   for (const v of ["", null, "../bob@international.mahquantum.tech", "bob@other.com/path", "bob@evil..com", "no-at-sign"]) {
     assert.equal(acl.normalizeMailboxId(v), null);
   }
