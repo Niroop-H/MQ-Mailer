@@ -12,7 +12,7 @@ These hostnames serve different purposes: `mailer` is an HTTPS app; `internation
 
 The Worker configuration sets `DOMAINS=international.mahquantum.tech`. Admins can provision only that email domain, and the inbound handler rejects any other mailbox domain. Employee authorization uses Google OIDC login identity, an admin-controlled D1 login allowlist, and independent mailbox owner/member ACLs.
 
-A separate Cloudflare D1 database (`mq-mailer-free`) holds limited metadata and attachments through the free-tier adapter. **Free does not mean unlimited**: the adapter enforces a 6 MiB maximum per stored object, and free-tier Worker/D1/DO/AI usage quotas apply. Outbound sends are disabled until an approved general-purpose sending provider is configured. No R2 billing or paid sending service was activated.
+A separate Cloudflare D1 database (`mq-mailer-free`) holds limited metadata and attachments through the free-tier adapter. **Free does not mean unlimited**: the adapter enforces a 6 MiB maximum per stored object, and free-tier Worker/D1/DO/AI usage quotas apply. Outbound sending is disabled until the installed Brevo Free API adapter receives an encrypted `BREVO_API_KEY` for an approved and independently verified international-domain sender. No R2 billing or paid sending service was activated.
 
 ## DNS prerequisites — do not disrupt Zoho
 
@@ -49,7 +49,7 @@ Cloudflare official docs:
 ## What this does NOT provide yet
 
 - It does not replace or synchronize Zoho mailboxes.
-- It does not provide verified general-purpose outbound mail yet.
+- Brevo outbound adapter is installed but it **does not provide verified live outgoing mail** until domain authentication, provider approval, API key and delivery testing are complete.
 - It does not certify secure production email: live Cloudflare Access isolation, delivery, quota/retention, backups/restores, abuse prevention, and attachment safety still need validation.
 - The planned HTTPS URL is not yet deployed or confirmed publicly reachable.
 

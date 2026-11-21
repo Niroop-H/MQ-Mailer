@@ -43,7 +43,7 @@ There is **no** `POLICY_AUD` or `TEAM_DOMAIN` for this mode; those belonged to t
 ## First login and employee onboarding
 
 1. Open `https://mailer.mahquantum.tech/auth/login`. Select **Continue with Google** and sign in using `MQ_ADMIN_EMAIL`.
-2. As the admin, open the **Employee sign-in access** section on the MQ Mailer home page. Approve a colleague's actual **Google sign-in email** (typically their personal `@gmail.com` or Google Workspace login). Approval lets them log in but grants **no mailbox access** by itself.
+2. As the admin, open **Employee sign-in access**. You can approve Gmail, Google Workspace, or a Google Account created with **`ceo@international.mahquantum.tech`** after that mailbox is receiving mail and has been verified. Approval alone grants **no mailbox access**.
 3. Create an address such as `research@international.mahquantum.tech` and set its owner to that approved Google login email. Or add the employee to an existing mailbox under **Settings → Employee access & shared mailboxes**.
 4. Each employee clicks Google sign-in using that approved account. Their original Google subject ID is bound on first login. Revoking a login invalidates sessions, and restoring access preserves the original subject binding.
 5. The admin account can manage every mailbox. Unassigned legacy mailboxes remain admin-only.
@@ -52,7 +52,7 @@ There is **no** `POLICY_AUD` or `TEAM_DOMAIN` for this mode; those belonged to t
 ## Security properties and operational limits
 
 - Google ID token signature, issuer, audience, expiry and nonce are verified server-side with `jose` and Google's public signing keys.
-- Only Google-verified `@gmail.com` or Google Workspace hosted-domain identities are accepted. A Google login using an unrelated third-party email address is rejected due to potential loss of ownership.
+- Only verified Gmail, Google Workspace, or an **administrator-approved Google Account using `@international.mahquantum.tech` as its existing non-Gmail email** is accepted. Google's `email_verified` alone is not ongoing proof of mailbox control for external domains; approve only identities confirmed by the trusted administrator, and pin the original Google `sub`. A privileged administrator with a non-Gmail Google Account must already have an independently bound subject; keep the trusted Gmail administrator during initial bootstrap.
 - OAuth requests use a one-time D1 state row, HTTPS host-only cookie, S256 PKCE and a 10-minute expiration.
 - Browser sessions use a random opaque `__Host-mq_session` Secure/HttpOnly/SameSite=Lax cookie, 12-hour maximum session, and only the SHA-256 hash of the session token is stored in D1.
 - All non-read requests require exact same-origin POST/PUT/PATCH/DELETE origin verification.
@@ -61,10 +61,14 @@ There is **no** `POLICY_AUD` or `TEAM_DOMAIN` for this mode; those belonged to t
 - All mailbox operations remain behind the existing owner/member authorization middleware.
 - Cookie-backed browser sessions do **not** replace end-to-end security validation: test identity revocation, CSRF, session fixation, WebSockets, Mailbox ACLs, and actual Google sign-in before handling sensitive business mail.
 
+## Create a Google Account with the exact CEO email
+
+Once the CEO inbox can receive verification messages, open https://accounts.google.com/signup and select **Use your existing email**; enter **ceo@international.mahquantum.tech**. This is a no-Workspace Google Account. It does not add Gmail hosting. Finish email verification from MQ Mailer, then allowlist that address as the trusted administrator, assign mailbox ownership, and sign in with Google. For full setup order and security notes see [CEO-GOOGLE-ACCOUNT-AND-MAIL-SETUP.md](CEO-GOOGLE-ACCOUNT-AND-MAIL-SETUP.md).
+
 ## What remains unrelated to login
 
 **Inbound:** Configure Cloudflare Email Routing for **`international.mahquantum.tech` only**, preserving Zoho's apex MX.
 
-**Outbound:** MQ Mailer currently has no general-purpose outbound sending service. Installing Google sign-in does not activate sending; select and integrate a separately approved outbound service without a payment method.
+**Outbound:** MQ Mailer includes a **Brevo Free API adapter** that refuses sending unless the encrypted Worker secret `BREVO_API_KEY` is configured. The international sender domain must be verified/approved in Brevo before live delivery, and Brevo terms/limits must permit the intended correspondence. Never add an API key to GitHub.
 
 **Zero spend:** Cloudflare Workers Free, D1 Free, free OAuth identity scopes and existing GitHub CI require no subscription for their included allowances. These are usage-limited services, not unlimited free infrastructure. Avoid enabling billable products.

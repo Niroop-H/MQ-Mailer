@@ -1,16 +1,16 @@
-# CEO and employee inboxes: Gmail login != company mailbox
+# CEO and employee inboxes: custom Google Account + company mailbox
 
 MQ Mailer is intentionally **light theme only** and must stay on Cloudflare Workers/D1 free-tier resources wherever possible.
 
 ## The distinction
 
-**Login identity:** an administrator-approved Gmail or Google Workspace login (for example `your-existing-gmail@gmail.com`). Google OAuth is used only to prove identity; it does not host or forward company email. The Google sign-in never needs an account named `ceo@international.mahquantum.tech`.
+**Login identity:** MQ Mailer supports administrator-approved Gmail, Google Workspace, **or a Google Account created using your existing `ceo@international.mahquantum.tech` email**. Google OAuth proves identity; Google is not providing Gmail inbox hosting. To create the Google Account with the company address, the CEO mailbox must first receive Google's verification email.
 
 **Company inbox:** `ceo@international.mahquantum.tech`, created by MQ Mailer. This inbox belongs to the international email subdomain and can be assigned to the exact approved Google login in the mailbox owner/member ACL. For example:
 
 | MQ Mailer inbox | Who signs in | How access works |
 | --- | --- | --- |
-| `ceo@international.mahquantum.tech` | Administrator's existing Gmail | Admin can open, manage and assign CEO mailbox |
+| `ceo@international.mahquantum.tech` | A Google Account created with the same `ceo@international.mahquantum.tech` address | Trusted admin initially creates/approves and assigns CEO mailbox; CEO later signs in using that address |
 | `research@international.mahquantum.tech` | Research employee's existing Google email | Admin must approve identity and assign mailbox ownership |
 | `support@international.mahquantum.tech` | Approved Google accounts | Admin can explicitly assign multiple shared members |
 
@@ -25,14 +25,14 @@ The inbox name and login name can differ. Mailbox creation is restricted to the 
 5. In Cloudflare **Email Service → Email Routing → Settings → Subdomains**, configure only the **international** subdomain. Do **NOT** modify the root Zoho MX records.
 6. Add explicit destination rule for `ceo@international.mahquantum.tech`: **Send to a Worker → mq-mailer**. Do not use apex catch-all routing.
 7. Verify an external message arrives in the app and that an unapproved employee cannot access the CEO mailbox.
-8. Outbound general-purpose mail is **not enabled yet**. The recipient-visible `From: ceo@international.mahquantum.tech` requires a separately approved outbound provider that supports business correspondence, proper domain SPF/DKIM/DMARC and a Worker sender adapter.
+8. A Brevo sender adapter exists but cannot send until a verified Brevo account, approved `international.mahquantum.tech` sender, proper SPF/DKIM/DMARC, and encrypted `BREVO_API_KEY` are configured. Confirm the provider permits your correspondence. Sending is **not operational yet**.
 
 ## Cost reality
 
 - Google OAuth for standard identity scopes: no Google Workspace subscription or paid API required.
 - Cloudflare Email Routing for the international subdomain: available on the Workers Free plan with operational limits; it does not automatically include general-purpose outbound SMTP.
 - Cloudflare D1/Workers/DO: available within Free plan quotas, not unlimited. Storage in this repository is capped at 6 MiB per object.
-- **Arbitrary-recipient outbound sending with Cloudflare Email Sending requires Workers Paid**. Because the requirement is no credit card, do not turn this on. A compatible free outbound alternative must be selected and tested before we can call it a full send-and-receive business mail service.
+- Cloudflare's arbitrary-recipient sending requires Workers Paid. We will **not** enable it. Brevo's no-card free API adapter is installed in code, but awaits account approval, sender verification, secret configuration and live delivery tests.
 - No Google OAuth consent screen, API key, credential or secret belongs in GitHub files.
 
 ## Light-only UI rule

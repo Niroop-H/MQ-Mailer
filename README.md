@@ -4,7 +4,7 @@ Independent, self-hosted email and AI inbox based on [Cloudflare Agentic Inbox](
 
 **Source ownership:** All application source files are stored in this repository. It is not a Git submodule, hosted iframe, or dependency on the continued existence of the upstream repository. The project preserves upstream Apache-2.0 licensing and attribution; see [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
-**Current phase:** Code deployed on Cloudflare Workers; custom domain `mailer.mahquantum.tech` attached. Google OIDC login implementation is committed and CI-tested, but **live Google sign-in needs Worker OAuth secrets and real-user testing**. No general-purpose outbound sending is configured.
+**Current phase:** Code deployed on Cloudflare Workers; custom domain `mailer.mahquantum.tech` attached. Google OIDC login implementation is committed and CI-tested, but **live Google sign-in needs Worker OAuth secrets and real-user testing**. Brevo Free sending adapter is implemented but has no API key or sender verification; no live outbound mail is configured.
 
 ## Current coexistence policy — Zoho continues to receive @mahquantum.tech
 
@@ -20,6 +20,10 @@ The Cloudflare DNS zone is active; existing Zoho records are preserved. The Work
 
 Cloudflare Email Routing supports a separately configured **international** subdomain. Do not enable apex routing on Zoho. The full [international deployment guide](docs/INTERNATIONAL-DEPLOYMENT.md) explains the DNS prerequisites, free-tier limitations, and routing rules. The webmail custom domain is attached; international email routing is still pending.
 
+## CEO address as its own Google Account (no Google Workspace)
+
+Google allows creating an account using an existing non-Gmail email address such as `ceo@international.mahquantum.tech`. This does **not** give that address a Gmail-hosted mailbox. MQ Mailer accepts this identity after the trusted administrator approves and binds it, and after inbound routing enables Google verification email. See [CEO Google Account and Send/Receive setup](docs/CEO-GOOGLE-ACCOUNT-AND-MAIL-SETUP.md). Existing Zoho remains untouched.
+
 ## Card-free authentication setup
 
 Read **[GOOGLE-AUTH-FREE.md](docs/GOOGLE-AUTH-FREE.md)**. Create a standard Google OAuth web client and enter the client ID, client secret and admin login email as **encrypted Cloudflare Worker secrets**, not GitHub files. Callback: `https://mailer.mahquantum.tech/auth/google/callback`. This uses only identity scopes (`openid email profile`) and D1 Free, not paid Google APIs. If the Google console asks for a credit card, stop rather than enabling billing.
@@ -34,7 +38,7 @@ The D1 schema is committed in `migrations/0002_auth_google.sql` and was applied 
 - Attachments and mailbox metadata: Cloudflare D1 limited object adapter (6 MiB per object, free-tier quota limits)
 - Incoming email: Cloudflare Worker email handler exists; targets international subdomain routing only, not existing Zoho mail
 - Outgoing email: disabled until an approved provider integration is configured; no Cloudflare Email Service binding in the free-tier Wrangler setup
-- Outgoing **ordinary business correspondence**: requires an additional compliant, permitted email-sending provider/adapter; **not implemented yet**
+- Outgoing messages: optional Brevo Free API sender adapter (requires approved use, dedicated sender verification and a Worker secret; currently disabled)
 - AI: Cloudflare Workers AI and the Agents SDK
 - Authentication: free Google OpenID Connect (OAuth code + PKCE) with D1-backed admin-approved accounts and sessions. **No Cloudflare Access/Zero Trust required**.
 - Source and CI: GitHub (`Niroop-H/MQ-Mailer`)
@@ -70,7 +74,7 @@ Run `npm test` for authorization regression tests. See [docs/CUSTOM-DOMAIN.md](d
 ## Known limitations and release gates
 
 - Mailbox owner/member ACLs are enforced on the HTTP webmail API. Employee AI/MCP is deliberately disabled, and live Google OAuth and end-to-end authorization tests are still required.
-- Sending is unavailable until a permitted outbound provider is integrated and delivery has been tested.
+- Sending via the installed Brevo adapter remains unavailable until an approved sender and `BREVO_API_KEY` are configured and live delivery has been tested.
 - Existing Zoho MX records must not be changed. The Worker will receive only international subdomain mail after explicit Email Routing is activated.
 - This repository does not include or back up live email messages, D1 data, or Durable Object data. Configure operational backups separately.
 - The copied upstream demo screenshot and generic favicon.ico are intentionally not carried forward, replaced with our own branding and documentation.
