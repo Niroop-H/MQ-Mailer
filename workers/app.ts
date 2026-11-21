@@ -4,12 +4,12 @@
 
 import { routeAgentRequest } from "agents";
 import { Hono } from "hono";
-import { jwtVerify, createRemoteJWKSet } from "jose";
 import { createRequestHandler } from "react-router";
 import { app as apiApp, receiveEmail } from "./index";
 import { EmailMCP } from "./mcp";
 import type { Env } from "./types";
-import { normalizeIdentity, type MailIdentity } from "./lib/access-control";
+import { type MailIdentity } from "./lib/access-control";
+import { configured, canonicalHost, safeMethod, loginPage, startGoogleLogin, completeGoogleLogin, currentIdentity, logout, PUBLIC_ORIGIN, LOGIN_PATH, listApprovedUsers, approveUser, revokeUser, refreshUser } from "./auth/google";
 
 export { MailboxDO } from "./durableObject";
 export { EmailAgent } from "./agent";
@@ -29,72 +29,73 @@ const requestHandler = createRequestHandler(
 	import.meta.env.MODE,
 );
 
-function getAccessUrls(teamDomain: string) {
-	const certsPath = "/cdn-cgi/access/certs";
-	const teamUrl = new URL(teamDomain);
-	const issuer = teamUrl.origin;
-	const certsUrl = teamUrl.pathname.endsWith(certsPath)
-		? teamUrl
-		: new URL(certsPath, issuer);
-
-	return { issuer, certsUrl };
-}
-
 // Main app that wraps the API and adds React Router fallback
 const app = new Hono<{ Bindings: Env; Variables: { mqIdentity: MailIdentity } }>();
 
-// Cloudflare Access JWT validation middleware (production only)
+// Self-hosted Google OIDC authentication; no Cloudflare Zero Trust subscription.
+// All routes (including assets, API, WebSockets and preview URLs) fail closed
+// unless served from the one configured production hostname.
 app.use("*", async (c, next) => {
-	// Development-only trusted stub. Never expose local dev publicly.
-	if (import.meta.env.DEV) {
-		c.set("mqIdentity", { email: "local-admin@localhost.invalid", isAdmin: true });
-		return next();
-	}
+  if (import.meta.env.DEV) {
+    c.set("mqIdentity", { email: "local-admin@localhost.invalid", isAdmin: true });
+    return next();
+  }
+  if (!canonicalHost(c.req.raw)) return c.text("Open https://mailer.mahquantum.tech instead.", 403);
+  const path = new URL(c.req.url).pathname;
+  if (path === LOGIN_PATH || path === "/auth/google/start" || path === "/auth/google/callback" || path === "/auth/logout") {
+    return next();
+  }
+  if (!configured(c.env)) return c.text("MQ Mailer Google authentication is not configured. Add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and MQ_ADMIN_EMAIL as Worker secrets.", 503);
+  if (!safeMethod(c.req.raw)) return c.json({ error: "Cross-site request rejected" }, 403);
+  let actor: MailIdentity | null;
+  try {
+    actor = await currentIdentity(c.req.raw, c.env);
+  } catch {
+    return c.json({ error: "Authentication store unavailable" }, 503);
+  }
+  if (!actor) {
+    const accept = c.req.header("accept") || "";
+    return accept.includes("text/html") && !path.startsWith("/api/")
+      ? c.redirect(LOGIN_PATH, 302)
+      : c.json({ error: "Sign in to MQ Mailer before accessing this resource" }, 401);
+  }
+  c.set("mqIdentity", actor);
+  // Agent/MCP APIs are still admin-only because upstream tool calls have no
+  // independent owner checks. WebSocket requests require same-site Origin.
+  if ((path === "/mcp" || path.startsWith("/mcp/") || path.startsWith("/agents/")) && !actor.isAdmin) {
+    return c.json({ error: "AI/MCP requires administrator privileges" }, 403);
+  }
+  if (path.startsWith("/agents/") && c.req.header("origin") !== PUBLIC_ORIGIN) {
+    return c.json({ error: "Cross-site WebSocket rejected" }, 403);
+  }
+  await next();
+});
 
-	const { POLICY_AUD, TEAM_DOMAIN, MQ_ADMIN_EMAIL } = c.env;
+app.get("/auth/login", (c) => loginPage(c.env, Boolean(c.req.query("error"))));
+app.get("/auth/google/start", (c) => startGoogleLogin(c.req.raw, c.env));
+app.get("/auth/google/callback", (c) => completeGoogleLogin(c.req.raw, c.env));
+app.post("/auth/logout", (c) => logout(c.req.raw, c.env));
 
-	// Fail closed in production if Access is not configured.
-	if (!POLICY_AUD || !TEAM_DOMAIN || !MQ_ADMIN_EMAIL) {
-		return c.text(
-			"MAH Quantum Mail access must be configured. Set POLICY_AUD, TEAM_DOMAIN, and MQ_ADMIN_EMAIL.",
-			500,
-		);
-	}
-
-	const token = c.req.header("cf-access-jwt-assertion");
-	if (!token) {
-		return c.text("Missing required CF Access JWT", 403);
-	}
-
-	try {
-		const { issuer, certsUrl } = getAccessUrls(TEAM_DOMAIN);
-		const JWKS = createRemoteJWKSet(certsUrl);
-		const { payload } = await jwtVerify(token, JWKS, {
-			issuer,
-			audience: POLICY_AUD,
-		});
-		const authenticatedEmail = normalizeIdentity(payload.email);
-		const adminEmail = normalizeIdentity(MQ_ADMIN_EMAIL);
-		if (!authenticatedEmail || !adminEmail) {
-			return c.text("Cloudflare Access identity is not a valid email", 403);
-		}
-		c.set("mqIdentity", {
-			email: authenticatedEmail,
-			isAdmin: authenticatedEmail === adminEmail,
-		});
-	} catch {
-		return c.text("Invalid or expired Access token", 403);
-	}
-
-	// AI agent and MCP have their own Durable Object lifecycles. Until their
-	// internal tool executions enforce mailbox ACLs, disallow employee access.
-	// The administrator can use them; employees still have isolated webmail.
-	const path = new URL(c.req.url).pathname;
-	if ((path === "/mcp" || path.startsWith("/mcp/") || path.startsWith("/agents/"))
-		&& !c.var.mqIdentity.isAdmin) {
-		return c.text("AI/MCP is currently restricted to mailbox administrators", 403);
-	}
-	return next();
+// Administrator-managed employee sign-in allowlist, separate from mailbox ACLs.
+app.get("/api/v1/auth/users", async (c) => {
+  if (!c.var.mqIdentity.isAdmin) return c.json({ error: "Administrator required" }, 403);
+  return c.json(await listApprovedUsers(c.env));
+});
+app.post("/api/v1/auth/users", async (c) => {
+  if (!c.var.mqIdentity.isAdmin) return c.json({ error: "Administrator required" }, 403);
+  const body = await c.req.json().catch(() => null) as {email?:unknown} | null;
+  const email = await approveUser(c.env, body?.email, c.var.mqIdentity.email);
+  return email ? c.json({ email, status: "approved" }, 201) : c.json({ error: "Invalid or already approved email" }, 400);
+});
+app.delete("/api/v1/auth/users/:email", async (c) => {
+  if (!c.var.mqIdentity.isAdmin) return c.json({ error: "Administrator required" }, 403);
+  const ok = await revokeUser(c.env, c.req.param("email"));
+  return ok ? c.json({ revoked: true }) : c.json({ error: "Administrator cannot be revoked" }, 400);
+});
+app.put("/api/v1/auth/users/:email", async (c) => {
+  if (!c.var.mqIdentity.isAdmin) return c.json({ error: "Administrator required" }, 403);
+  const ok = await refreshUser(c.env, c.req.param("email"));
+  return ok ? c.json({ restored: true }) : c.json({ error: "Account not found or protected" }, 400);
 });
 
 // MCP server endpoint — used by AI coding tools (ProtoAgent, Claude Code, Cursor, etc.)
