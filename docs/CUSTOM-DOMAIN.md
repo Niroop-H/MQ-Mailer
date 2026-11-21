@@ -6,7 +6,7 @@
 
 **Keep Zoho `@mahquantum.tech` unchanged.**
 
-The Worker is not deployed yet and the Cloudflare DNS zone is **pending**. Do not save a Namify CNAME to the `workers.dev` address. With a Cloudflare **Workers Custom Domain**, Cloudflare creates the DNS entry and TLS certificate after the domain's zone is active.
+The Worker and custom domain are deployed, and Cloudflare DNS is **active**. Do not save a Namify CNAME to the `workers.dev` address. With a Cloudflare **Workers Custom Domain**, Cloudflare creates the DNS entry and TLS certificate after the domain's zone is active.
 
 To activate the existing pending zone, first migrate every real DNS record from Namify and verify all websites and Zoho mail records (MX, SPF, DKIM, DMARC). Then switch the registrar nameservers. In **Workers & Pages → mq-mailer → Settings → Domains & Routes → Add → Custom Domain**, enter `mailer.mahquantum.tech` after the Worker is deployed and the zone is active. No additional CNAME should be created for this hostname.
 
@@ -17,3 +17,5 @@ For inbound messages on `@international.mahquantum.tech`, configure Cloudflare E
 See [INTERNATIONAL-DEPLOYMENT.md](INTERNATIONAL-DEPLOYMENT.md) for a full checklist.
 
 Cloudflare Worker Custom Domain docs: https://developers.cloudflare.com/workers/configuration/routing/custom-domains/
+
+**Authentication update:** Cloudflare Access has been replaced by free Google OIDC. See [GOOGLE-AUTH-FREE.md](GOOGLE-AUTH-FREE.md). Google credentials must be entered as encrypted Worker secrets before sign-in is enabled.

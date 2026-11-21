@@ -1,6 +1,5 @@
-# Cloudflare Access (required in production). TEAM_DOMAIN may be the base Access URL or the full /cdn-cgi/access/certs URL.
-POLICY_AUD=your-access-policy-audience-tag
-TEAM_DOMAIN=https://your-team.cloudflareaccess.com
-
-# Exact Cloudflare Access email address of the sole pilot administrator.
-MQ_ADMIN_EMAIL=admin@example.com
+# Optional local development placeholders. NEVER paste production secrets into GitHub.
+# Production: configure via Cloudflare Worker Settings -> Variables and Secrets.
+GOOGLE_CLIENT_ID=your-web-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=replace-with-google-oauth-secret
+MQ_ADMIN_EMAIL=admin@gmail.com

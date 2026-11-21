@@ -4,13 +4,13 @@ Independent, self-hosted email and AI inbox based on [Cloudflare Agentic Inbox](
 
 **Source ownership:** All application source files are stored in this repository. It is not a Git submodule, hosted iframe, or dependency on the continued existence of the upstream repository. The project preserves upstream Apache-2.0 licensing and attribution; see [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
-**Current phase:** Employee mailbox isolation is implemented and CI-tested, but **not production-deployed or verified with real Cloudflare Access identities**. The AI and MCP interfaces remain administrator-only.
+**Current phase:** Code deployed on Cloudflare Workers; custom domain `mailer.mahquantum.tech` attached. Google OIDC login implementation is committed and CI-tested, but **live Google sign-in needs Worker OAuth secrets and real-user testing**. No general-purpose outbound sending is configured.
 
 ## Current coexistence policy — Zoho continues to receive @mahquantum.tech
 
 **Do not switch MX or activate Cloudflare Email Routing on the root domain.** Existing Zoho MX records must remain in place. MQ Mailer will be a separate web interface, not a replacement for Zoho's delivery. Synchronizing Zoho mailbox contents to this UI requires an additional authorized Zoho API/IMAP integration that is **not implemented**. See [Zoho coexistence guide](docs/ZOHO-COEXISTENCE.md).
 
-The new Cloudflare DNS zone is pending, with no active imported records. **Do not change the Namify nameservers until the existing zone is fully copied and verified** (Zoho, SPF/DKIM/DMARC, Vercel, and all other subdomains). No public mail website is deployed yet.
+The Cloudflare DNS zone is active; existing Zoho records are preserved. The Worker and Custom Domain have already been deployed; sign-in remains unavailable until Google OAuth secrets are configured.
 
 ## Dedicated international mail domain and webmail address
 
@@ -18,7 +18,13 @@ The new Cloudflare DNS zone is pending, with no active imported records. **Do no
 - **Planned protected website:** `https://mailer.mahquantum.tech`.
 - **Zoho existing addresses:** `@mahquantum.tech` — leave MX, SPF, DKIM and DMARC untouched.
 
-Cloudflare Email Routing supports a separately configured **international** subdomain. Do not enable apex routing on Zoho. The full [international deployment guide](docs/INTERNATIONAL-DEPLOYMENT.md) explains the DNS prerequisites, free-tier limitations, and routing rules. Neither domain is live in MQ-Mailer yet.
+Cloudflare Email Routing supports a separately configured **international** subdomain. Do not enable apex routing on Zoho. The full [international deployment guide](docs/INTERNATIONAL-DEPLOYMENT.md) explains the DNS prerequisites, free-tier limitations, and routing rules. The webmail custom domain is attached; international email routing is still pending.
+
+## Card-free authentication setup
+
+Read **[GOOGLE-AUTH-FREE.md](docs/GOOGLE-AUTH-FREE.md)**. Create a standard Google OAuth web client and enter the client ID, client secret and admin login email as **encrypted Cloudflare Worker secrets**, not GitHub files. Callback: `https://mailer.mahquantum.tech/auth/google/callback`. This uses only identity scopes (`openid email profile`) and D1 Free, not paid Google APIs. If the Google console asks for a credit card, stop rather than enabling billing.
+
+The D1 schema is committed in `migrations/0002_auth_google.sql` and was applied to the dedicated `mq-mailer-free` database. **No Google sign-in has been tested against a real account yet.**
 
 ## Stack
 
@@ -30,7 +36,7 @@ Cloudflare Email Routing supports a separately configured **international** subd
 - Outgoing email: disabled until an approved provider integration is configured; no Cloudflare Email Service binding in the free-tier Wrangler setup
 - Outgoing **ordinary business correspondence**: requires an additional compliant, permitted email-sending provider/adapter; **not implemented yet**
 - AI: Cloudflare Workers AI and the Agents SDK
-- Authentication: Cloudflare Access with validated JWT and owner/member mailbox ACLs; administrator configured by `MQ_ADMIN_EMAIL`
+- Authentication: free Google OpenID Connect (OAuth code + PKCE) with D1-backed admin-approved accounts and sessions. **No Cloudflare Access/Zero Trust required**.
 - Source and CI: GitHub (`Niroop-H/MQ-Mailer`)
 - Vercel: reserved for a **separate optional future administration site**; this React Router/Worker runtime must not be redeployed as a Vercel Next.js application.
 
@@ -39,7 +45,7 @@ Cloudflare Email Routing supports a separately configured **international** subd
 1. `npm ci`
 2. Configure `wrangler.jsonc`; dedicated D1 database `mq-mailer-free` is already created and its storage tables initialized. Do not activate R2 billing.
 3. `npm run dev` for local UI work.
-4. Follow **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** and **[docs/ZOHO-COEXISTENCE.md](docs/ZOHO-COEXISTENCE.md)** for protected Cloudflare deployment without disrupting Zoho.
+4. Set up [Google sign-in without a Cloudflare Zero Trust subscription](docs/GOOGLE-AUTH-FREE.md); follow **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** and **[docs/ZOHO-COEXISTENCE.md](docs/ZOHO-COEXISTENCE.md)** for protected Cloudflare deployment without disrupting Zoho.
 
 Build and type checks: `npm run build` and `npm run typecheck`.
 
@@ -55,7 +61,7 @@ Cloudflare Email Service is documented for **transactional email only**; it must
 
 ## Employee mailbox access
 
-Administrators can create mailboxes and assign an owner using the owner's exact **Cloudflare Access login email**. Shared members are added in **Settings → Employee access & shared mailboxes**. Employees see only assigned mailboxes and cannot modify access policies or create/delete mailboxes. Legacy mailboxes without assignments remain admin-only.
+Administrators can approve Google login emails, then create mailboxes and assign ownership to those approved Google sign-in emails. Shared members are added in **Settings → Employee access & shared mailboxes**. Employees see only assigned mailboxes and cannot modify access policies or create/delete mailboxes. Legacy mailboxes without assignments remain admin-only.
 
 Employee AI/MCP access is intentionally blocked until its tools and sessions support fine-grained authorization.
 
@@ -63,7 +69,7 @@ Run `npm test` for authorization regression tests. See [docs/CUSTOM-DOMAIN.md](d
 
 ## Known limitations and release gates
 
-- Mailbox owner/member ACLs are enforced on the HTTP webmail API. Employee AI/MCP is deliberately disabled, and real Cloudflare Access security tests are still required.
+- Mailbox owner/member ACLs are enforced on the HTTP webmail API. Employee AI/MCP is deliberately disabled, and live Google OAuth and end-to-end authorization tests are still required.
 - Sending is unavailable until a permitted outbound provider is integrated and delivery has been tested.
 - Existing Zoho MX records must not be changed. The Worker will receive only international subdomain mail after explicit Email Routing is activated.
 - This repository does not include or back up live email messages, D1 data, or Durable Object data. Configure operational backups separately.

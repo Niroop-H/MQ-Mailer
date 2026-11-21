@@ -10,13 +10,13 @@ These hostnames serve different purposes: `mailer` is an HTTPS app; `internation
 
 ## What is prepared
 
-The Worker configuration sets `DOMAINS=international.mahquantum.tech`. Admins can provision only that email domain, and the inbound handler rejects any other mailbox domain. Employee authorization is based on Cloudflare Access login identity and owner/member ACLs.
+The Worker configuration sets `DOMAINS=international.mahquantum.tech`. Admins can provision only that email domain, and the inbound handler rejects any other mailbox domain. Employee authorization uses Google OIDC login identity, an admin-controlled D1 login allowlist, and independent mailbox owner/member ACLs.
 
 A separate Cloudflare D1 database (`mq-mailer-free`) holds limited metadata and attachments through the free-tier adapter. **Free does not mean unlimited**: the adapter enforces a 6 MiB maximum per stored object, and free-tier Worker/D1/DO/AI usage quotas apply. Outbound sends are disabled until an approved general-purpose sending provider is configured. No R2 billing or paid sending service was activated.
 
 ## DNS prerequisites — do not disrupt Zoho
 
-Cloudflare zone `mahquantum.tech` exists on the Free Website plan but is **pending** because the live domain still uses Namify nameservers. Cloudflare's zone currently has **zero active DNS records**.
+Cloudflare zone `mahquantum.tech` is **active** on Free, with the required existing Zoho and Vercel mappings staged before registrar nameserver cutover. The site custom domain is attached. The original cutover procedure below is retained as historical context.
 
 **Before switching nameservers**: export the entire live DNS zone from Namify, including all A/AAAA/CNAME/TXT/MX/SRV/CAA records, all website subdomains, Zoho MX and DKIM/SPF/DMARC, verification TXT records, and Vercel entries. Cloudflare's scan produced candidates, not a complete or authoritative migration. Correctly import all confirmed records to Cloudflare, with email records set to DNS-only, then verify the full comparison. Do not import the suspicious `mx.zoho.in.mahquantum.tech` candidate without checking Namify.
 
@@ -29,11 +29,11 @@ Do **not** create a CNAME for `mailer`. Cloudflare Workers Custom Domain creates
 
 ## Deploy webmail
 
-1. Connect **Niroop-H/MQ-Mailer** to Cloudflare Workers Builds, production branch `main`. The previous API connection attempt failed with Git-provider error 8000008; authorize the Cloudflare/GitHub integration through the dashboard if still disconnected.
+1. **Already completed:** `Niroop-H/MQ-Mailer` is connected to Workers Builds on `main` and deploys automatically.
 2. Set build command `npm run build` and deploy command `npx wrangler deploy`, using the checked-in `wrangler.jsonc`. Verify `mq-mailer-free` is bound as `D1_MAIL` and the SQL storage tables exist.
-3. Create the protected Cloudflare Access application and restrict who may authenticate. Provide required Worker secrets `POLICY_AUD`, `TEAM_DOMAIN`, and `MQ_ADMIN_EMAIL` (do not put their values in GitHub). Access must cover the public hostname and the workers.dev URL if enabled.
-4. Deploy the Worker and perform actual unauthorized, admin, and employee login tests. No live URL is confirmed until those pass.
-5. In Cloudflare **Workers & Pages → mq-mailer → Settings → Domains & Routes → Add → Custom Domain**, add `mailer.mahquantum.tech`. This needs an active Cloudflare DNS zone. It can create its own DNS record and certificate.
+3. Set up Google OIDC using [GOOGLE-AUTH-FREE.md](GOOGLE-AUTH-FREE.md). Worker secrets: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MQ_ADMIN_EMAIL`. No Cloudflare Zero Trust or Access account needed.
+4. The Worker is deployed and custom hostname attached, but **Google sign-in is blocked until OAuth credentials are configured**. Perform real admin and employee login tests after setup.
+5. **Already completed:** `mailer.mahquantum.tech` is a Worker Custom Domain with Cloudflare-managed DNS. No CNAME needs to be added.
 
 ## Receive only international emails
 
