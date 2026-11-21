@@ -181,6 +181,7 @@ export default function HomeRoute() {
 						<section className="border border-kumo-line rounded-xl bg-kumo-base p-5 mb-7" aria-label="Employee sign-in management">
 							<h2 className="text-lg font-bold text-kumo-default">Employee sign-in access</h2>
 							<p className="text-sm text-kumo-subtle my-2">Approve a colleague's Google sign-in email here, then separately assign their email in the mailbox's access settings. Approving login alone grants no mailbox access.</p>
+							<p className="text-xs text-kumo-subtle mb-2">Example: <strong>ceo@international.mahquantum.tech</strong> is an MQ Mailer inbox; an approved Gmail signs in and can be assigned as the CEO mailbox owner. Google Workspace is not required.</p>
 							<form className="flex gap-2 flex-wrap my-3" onSubmit={approveLogin}>
 								<input type="email" required aria-label="Employee Google email" placeholder="colleague@gmail.com" value={newLoginEmail} onChange={(e)=>setNewLoginEmail(e.target.value)} className="min-w-52 flex-1 rounded-md border border-kumo-line p-2 bg-kumo-base text-kumo-default" />
 								<Button type="submit" variant="primary" loading={loginBusy}>Approve login</Button>
@@ -332,8 +333,8 @@ export default function HomeRoute() {
 							</div>
 						</div>
 						<Input
-							label="Owner's approved Google sign-in email (optional)"
-							placeholder="colleague@gmail.com — defaults to your login"
+							label="Google login of mailbox owner (optional)"
+							placeholder="Approved Gmail or Google Workspace login"
 							size="sm"
 							value={ownerEmail}
 							onChange={(e) => setOwnerEmail(e.target.value)}

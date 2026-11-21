@@ -77,12 +77,13 @@ const KumoLink = forwardRef<
 
 export function Layout({ children }: { children: React.ReactNode }) {
 	return (
-		<html lang="en">
+		<html lang="en" data-mode="light" style={{ colorScheme: "light" }}>
 			<head>
 				<meta charSet="UTF-8" />
 				<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 				<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-				<meta name="theme-color" content="#111827" />
+				<meta name="theme-color" content="#ffffff" />
+				<meta name="color-scheme" content="light" />
 				<meta name="description" content="MAH Quantum Mail business email workspace." />
 				<title>MAH Quantum Mail | MQ Mailer</title>
 				<Meta />

@@ -122,7 +122,7 @@ export default function SettingsRoute() {
 				{isAdmin && (
 					<div className="rounded-lg border border-kumo-line bg-kumo-base p-5">
 						<div className="text-sm font-semibold text-kumo-default mb-2">Employee access &amp; shared mailboxes</div>
-						<p className="text-xs text-kumo-subtle mb-4">Only the administrator can assign an owner or authorized team members. Enter their exact Cloudflare Access sign-in emails. Existing mailboxes without an owner remain admin-only.</p>
+						<p className="text-xs text-kumo-subtle mb-4">Only the administrator can assign an owner or authorized team members. Enter their exact approved Google sign-in emails (Gmail or Google Workspace). The company mailbox address may be different from the sign-in address. Existing mailboxes without an owner remain admin-only.</p>
 						<div className="space-y-3">
 							<Input label="Owner's sign-in email" type="email" value={ownerEmail} placeholder="employee@example.com" onChange={(e) => setOwnerEmail(e.target.value)} />
 							<div>

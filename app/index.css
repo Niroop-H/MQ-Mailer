@@ -37,4 +37,8 @@ body { font-family: Aptos, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
 .mq-sidebar-icon { width:2.2rem; height:2.2rem; flex-shrink:0; }
 .mq-sidebar-name { display:block; color:var(--color-kumo-default,currentColor); font-weight:750; font-size:.95rem; letter-spacing:-.02em; }
 .mq-sidebar-caption { display:block; color:var(--color-kumo-subtle,#677487); font-size:.59rem; font-weight:700; letter-spacing:.13em; }
-@media (prefers-color-scheme:dark) { .mq-identity { background:linear-gradient(115deg,#151b29,#1e273a); border-color:#334155; color:#f8fafc; } .mq-identity-subtitle { color:#cad2df; } }
+
+
+/* MQ Mailer is light-only across browser preferences. Kumo mode applies to all portalled dialogs. */
+:root { color-scheme: light; }
+html[data-mode="light"], body { color-scheme: light; }

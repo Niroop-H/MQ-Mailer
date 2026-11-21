@@ -105,12 +105,12 @@ export function loginPage(env: Env, error = false): Response {
     ? "<p class='warning'>Google sign-in is not configured yet. The administrator must add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and MQ_ADMIN_EMAIL to the Worker secrets.</p>"
     : error ? "<p class='warning'>Sign-in was not completed. Please try again or ask the administrator for access.</p>" : "";
   const link = ready ? "<a class='button' href='/auth/google/start'>Continue with Google</a>" : "";
-  const html = "<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><meta name='robots' content='noindex,nofollow'><title>MQ Mailer | Secure sign in</title>" +
-    "<style>*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#101827;color:#f8fafc;font-family:Inter,Arial,sans-serif;display:grid;place-items:center;padding:24px}" +
-    "main{width:min(440px,100%);padding:40px 34px;background:#172235;border:1px solid #324057;border-radius:18px;box-shadow:0 20px 80px #0005}" +
-    "h1{font-size:29px;margin:10px 0}p{line-height:1.6;color:#c8d3e2}small{color:#9eabc3}.over{font-size:12px;letter-spacing:.19em;color:#d5ae68;font-weight:750}" +
-    ".button{display:block;text-decoration:none;text-align:center;background:#fff;color:#162033;border-radius:9px;padding:15px;font-weight:700;margin:25px 0}" +
-    ".button:hover{background:#e6ebf5}.warning{color:#f6c88a;padding:12px;background:#342718;border-radius:8px}</style></head>" +
+  const html = "<!doctype html><html lang='en' style='color-scheme:light'><head><meta charset='utf-8'><meta name='theme-color' content='#ffffff'><meta name='color-scheme' content='light'><meta name='viewport' content='width=device-width,initial-scale=1'><meta name='robots' content='noindex,nofollow'><title>MQ Mailer | Secure sign in</title>" +
+    "<style>*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#f4f6f9;color:#172334;font-family:Aptos,Inter,Arial,sans-serif;display:grid;place-items:center;padding:24px}" +
+    "main{width:min(440px,100%);padding:40px 34px;background:#ffffff;border:1px solid #e1e5eb;border-radius:18px;box-shadow:0 18px 65px #1c2f4a12}" +
+    "h1{font-size:29px;margin:10px 0;color:#182335}p{line-height:1.6;color:#4c5b70}small{color:#63738a}.over{font-size:12px;letter-spacing:.19em;color:#796021;font-weight:750}" +
+    ".button{display:block;text-decoration:none;text-align:center;background:#172f4b;color:#fff;border-radius:9px;padding:15px;font-weight:700;margin:25px 0}" +
+    ".button:hover{background:#24466a}.warning{color:#714516;padding:12px;background:#fff6df;border:1px solid #f0dcae;border-radius:8px}</style></head>" +
     "<body><main><span class='over'>MAH QUANTUM</span><h1>MQ Mailer</h1><p>International email workspace. Sign in with an approved Google account to access only your assigned mailboxes.</p>" +
     status + link + "<small>Protected with server-verified Google identity and encrypted HTTPS session cookies. Existing Zoho mail is separate.</small></main></body></html>";
   return new Response(html, { status: ready ? 200 : 503, headers: {
