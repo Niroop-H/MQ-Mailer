@@ -89,6 +89,11 @@ test("sign-in trusts Gmail and verified Workspace hosted domains, not unaffiliat
   assert.equal(auth.googleEmailAllowed("user@company.com"),false);
   assert.equal(auth.googleEmailAllowed("user@company.com","evil.com"),false);
   assert.equal(auth.googleEmailAllowed("someone@yahoo.com"),false);
+  // Free Google Accounts can be created with an existing international mailbox.
+  assert.equal(auth.googleEmailAllowed("ceo@international.mahquantum.tech"),true);
+  assert.equal(auth.googleEmailAllowed("ceo@international.mahquantum.tech","international.mahquantum.tech"),true);
+  assert.equal(auth.googleEmailAllowed("ceo@international.mahquantum.tech","evil.example"),false);
+  assert.equal(auth.googleEmailAllowed("ceo@mahquantum.tech"),false);
 });
 
 test("single-use OAuth callback state is required before any network exchange", async () => {

@@ -70,6 +70,13 @@ export function googleEmailAllowed(email: string, hostedDomain?: unknown): boole
   const normalized = normalizeIdentity(email);
   if (!normalized || normalized !== email) return false;
   if (normalized.endsWith("@gmail.com")) return true;
+  // A free Google Account may use an existing externally hosted email address.
+  // Google is NOT authoritative for these addresses. We restrict such logins
+  // to our managed international domain and separately require administrator
+  // approval plus immutable Google subject binding in D1.
+  if (normalized.endsWith("@international.mahquantum.tech")) {
+    return hostedDomain === undefined || hostedDomain === "international.mahquantum.tech";
+  }
   if (typeof hostedDomain !== "string" || !hostedDomain) return false;
   return normalized.endsWith("@" + hostedDomain.toLowerCase()) &&
     hostedDomain.includes(".") && !hostedDomain.includes("/");
@@ -92,7 +99,18 @@ export async function currentIdentity(request: Request, env: Env): Promise<MailI
   if (!session) return null;
   const email = normalizeIdentity(session.email);
   if (!email || !session.google_sub || email !== session.email) return null;
-  if (email === admin) return { email, isAdmin: true };
+  if (email === admin) {
+    // An admin identity based on a third-party email must be prebound to a
+    // verified Google subject in the allowlist. Never trust email alone for
+    // an external Google Account, since addresses can be reassigned.
+    if (email.endsWith("@international.mahquantum.tech")) {
+      const bound = await env.D1_MAIL.prepare(
+        "SELECT google_sub,disabled FROM mq_auth_users WHERE email=? AND google_sub=? AND disabled=0"
+      ).bind(email,session.google_sub).first<DbUser>();
+      return bound ? { email, isAdmin: true } : null;
+    }
+    return { email, isAdmin: true };
+  }
   const user = await env.D1_MAIL.prepare(
     "SELECT email,google_sub,disabled FROM mq_auth_users WHERE email=? AND google_sub=? AND disabled=0"
   ).bind(email, session.google_sub).first<DbUser>();
@@ -188,6 +206,12 @@ export async function completeGoogleLogin(request: Request, env: Env): Promise<R
     const email = normalizeIdentity(payload.email);
     if (!email || !googleEmailAllowed(email, payload.hd)) throw new Error("Google email must be Gmail or Workspace");
     const admin = normalizeIdentity(env.MQ_ADMIN_EMAIL);
+    if (email === admin && email.endsWith("@international.mahquantum.tech")) {
+      const boundAdmin = await env.D1_MAIL.prepare(
+        "SELECT google_sub FROM mq_auth_users WHERE email=? AND google_sub=? AND disabled=0"
+      ).bind(email,payload.sub).first<{google_sub:string}>();
+      if (!boundAdmin) return denied("External-domain administrator identity requires prior verified subject binding.");
+    }
     if (email !== admin) {
       const approved = await env.D1_MAIL.prepare(
         "SELECT email,google_sub,disabled FROM mq_auth_users WHERE email=?"
