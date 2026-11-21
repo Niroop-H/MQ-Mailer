@@ -6,7 +6,7 @@ export interface Env extends Cloudflare.Env {
 	D1_MAIL: D1Database;
 	BUCKET?: R2Bucket;
 	EMAIL?: SendEmail;
-	POLICY_AUD: string;
-	TEAM_DOMAIN: string;
+	GOOGLE_CLIENT_ID: string;
+	GOOGLE_CLIENT_SECRET: string;
 	MQ_ADMIN_EMAIL: string;
 }

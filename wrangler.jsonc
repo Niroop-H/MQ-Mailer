@@ -10,9 +10,9 @@
 		"nodejs_compat"
 	],
 	"vars": {
-		// Production deploys must also define POLICY_AUD, TEAM_DOMAIN and MQ_ADMIN_EMAIL.
-		// TEAM_DOMAIN may be the base Access URL or the full /cdn-cgi/access/certs URL.
-		// The worker fails closed in production without Access configuration.
+		// Production sign-in requires GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and MQ_ADMIN_EMAIL
+		// as encrypted Worker secrets. No Cloudflare Zero Trust Access subscription.
+		// The Worker denies access until all secrets are configured.
 		// Existing Zoho @mahquantum.tech accounts are NOT hosted by this Worker.
 		"DOMAINS": "international.mahquantum.tech",
 		"EMAIL_ADDRESSES": []

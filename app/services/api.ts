@@ -94,9 +94,18 @@ interface EmailListResponse {
 	totalCount: number;
 }
 
+// Employee Google sign-in allowlist (independent of mailbox ownership ACLs)
+export interface ApprovedLogin { email: string; disabled: number; bound: boolean }
+
 // ---------- API client ----------
 
 const api = {
+	// Employee login approvals (administrator-only; separate from mailbox assignments)
+	listLogins: () => get<ApprovedLogin[]>("/api/v1/auth/users"),
+	approveLogin: (email: string) => post<{ email: string; status: string }>("/api/v1/auth/users", { email }),
+	revokeLogin: (email: string) => del<{ revoked: boolean }>("/api/v1/auth/users/" + encodeURIComponent(email)),
+	restoreLogin: (email: string) => put<{ restored: boolean }>("/api/v1/auth/users/" + encodeURIComponent(email)),
+
 	// Config
 	getConfig: () =>
 		get<{ domains: string[]; emailAddresses: string[]; isAdmin: boolean; signedInEmail: string }>("/api/v1/config"),

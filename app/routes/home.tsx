@@ -43,6 +43,27 @@ export default function HomeRoute() {
 	const domains = configData?.domains ?? [];
 	const emailAddresses = configData?.emailAddresses ?? [];
 	const isAdmin = configData?.isAdmin === true;
+	const {data: approvedLogins = [], refetch: refetchLogins} = useQuery({
+		queryKey: ["mq-approved-logins"], queryFn: api.listLogins, enabled: isAdmin,
+	});
+	const [newLoginEmail, setNewLoginEmail] = useState("");
+	const [loginError, setLoginError] = useState<string | null>(null);
+	const [loginBusy, setLoginBusy] = useState(false);
+	const approveLogin = async (event: FormEvent) => {
+		event.preventDefault();
+		if (!isAdmin || loginBusy) return;
+		setLoginBusy(true); setLoginError(null);
+		try { await api.approveLogin(newLoginEmail.trim().toLowerCase()); setNewLoginEmail(""); await refetchLogins(); }
+		catch (error) {setLoginError(error instanceof Error ? error.message : "Unable to approve employee");}
+		finally {setLoginBusy(false);}
+	};
+	const toggleLogin = async (email: string, disabled: boolean) => {
+		if (!isAdmin || loginBusy) return;
+		setLoginBusy(true);setLoginError(null);
+		try { if(disabled) await api.restoreLogin(email); else await api.revokeLogin(email); await refetchLogins(); }
+		catch(error){setLoginError(error instanceof Error ? error.message : "Could not update access");}
+		finally {setLoginBusy(false);}
+	};
 
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [newPrefix, setNewPrefix] = useState("");
@@ -155,6 +176,24 @@ export default function HomeRoute() {
 							</Button>
 						)}
 					</div>
+					{isAdmin && (
+						<section className="border border-kumo-line rounded-xl bg-kumo-base p-5 mb-7" aria-label="Employee sign-in management">
+							<h2 className="text-lg font-bold text-kumo-default">Employee sign-in access</h2>
+							<p className="text-sm text-kumo-subtle my-2">Approve a colleague's Google sign-in email here, then separately assign their email in the mailbox's access settings. Approving login alone grants no mailbox access.</p>
+							<form className="flex gap-2 flex-wrap my-3" onSubmit={approveLogin}>
+								<input type="email" required aria-label="Employee Google email" placeholder="colleague@gmail.com" value={newLoginEmail} onChange={(e)=>setNewLoginEmail(e.target.value)} className="min-w-52 flex-1 rounded-md border border-kumo-line p-2 bg-kumo-base text-kumo-default" />
+								<Button type="submit" variant="primary" loading={loginBusy}>Approve login</Button>
+							</form>
+							{loginError && <p role="alert" className="text-sm text-red-500 mb-2">{loginError}</p>}
+							<ul className="divide-y divide-kumo-line">
+								{approvedLogins.map((person) => <li key={person.email} className="flex gap-2 justify-between items-center py-2 flex-wrap">
+									<div className="min-w-0"><p className="text-sm font-medium break-all">{person.email}</p><p className="text-xs text-kumo-subtle">{person.disabled ? "Access disabled" : person.bound ? "Google identity bound" : "Awaiting first Google sign-in"}</p></div>
+									<Button type="button" size="sm" variant="secondary" disabled={loginBusy} onClick={()=>toggleLogin(person.email,Boolean(person.disabled))}>{person.disabled ? "Restore" : "Revoke"}</Button>
+								</li>)}
+							</ul>
+						</section>
+					)}
+
 					{domains.length > 0 && (
 						<p className="text-sm text-kumo-subtle mt-1">
 							{domains.join(", ")}
@@ -223,10 +262,10 @@ export default function HomeRoute() {
 							</h3>
 							<p className="text-sm text-kumo-subtle max-w-sm mb-5">
 								{isConfigured
-									? "Your email routing is configured but no mailboxes have been created yet. They will appear here automatically."
-									: "Create a mailbox to start sending and receiving emails with your domain."}
+									? "Your email domain is configured but no mailbox has been created."
+									: "Create a mailbox for your international email domain. Delivery is enabled separately."}
 							</p>
-							{!isConfigured && (
+							{isAdmin && !isConfigured && (
 								<Button
 									variant="primary"
 									icon={<PlusIcon size={16} />}
@@ -292,7 +331,7 @@ export default function HomeRoute() {
 							</div>
 						</div>
 						<Input
-							label="Employee Cloudflare Access sign-in email (optional)"
+							label="Owner's approved Google sign-in email (optional)"
 							placeholder="employee@example.com — defaults to mailbox address"
 							size="sm"
 							value={ownerEmail}

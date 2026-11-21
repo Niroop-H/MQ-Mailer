@@ -123,6 +123,7 @@ export default function Header() {
 			)}
 
 			<div className="flex items-center gap-1 ml-auto shrink-0">
+				<form action="/auth/logout" method="post"><button type="submit" className="text-xs font-semibold rounded-md border border-kumo-line px-2 py-2 hover:bg-kumo-tint" title="End session">Sign out</button></form>
 				{configData?.isAdmin === true && <Tooltip content={isAgentPanelOpen ? "Hide agent panel" : "Show agent panel"} side="bottom" asChild>
 					<Button
 						variant={isAgentPanelOpen ? "secondary" : "ghost"}
