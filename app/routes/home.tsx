@@ -124,7 +124,7 @@ export default function HomeRoute() {
 		const name = newName || newPrefix;
 		setIsCreating(true);
 		try {
-			await createMailbox.mutateAsync({ email, name, ownerEmail: ownerEmail.trim() || email });
+			await createMailbox.mutateAsync({ email, name, ownerEmail: ownerEmail.trim() || configData?.signedInEmail || email });
 			toastManager.add({ title: "Mailbox created successfully!" });
 			setIsCreateOpen(false);
 			setNewPrefix("");
@@ -164,6 +164,7 @@ export default function HomeRoute() {
 			<div className="mx-auto max-w-2xl px-4 py-8 md:px-6 md:py-16">
 				<div className="mb-8">
 					<div className="mq-identity mb-6"><img src="/favicon.svg" alt="" className="mq-identity-icon" /><div><p className="mq-identity-overline">MAH QUANTUM</p><p className="mq-identity-title">MQ Mailer</p><p className="mq-identity-subtitle">Your secure communications workspace</p></div></div>
+					<div className="flex justify-between items-center mb-5 flex-wrap gap-2"><p className="text-xs text-kumo-subtle">Signed in: {configData?.signedInEmail || "Loading..."}</p><form action="/auth/logout" method="post"><button className="text-xs border border-kumo-line rounded-md px-3 py-2 hover:bg-kumo-tint" type="submit">Sign out</button></form></div>
 					<div className="flex items-center justify-between">
 						<h1 className="text-2xl font-bold text-kumo-default">Mailboxes</h1>
 						{isAdmin && !isConfigured && (
@@ -332,7 +333,7 @@ export default function HomeRoute() {
 						</div>
 						<Input
 							label="Owner's approved Google sign-in email (optional)"
-							placeholder="employee@example.com — defaults to mailbox address"
+							placeholder="colleague@gmail.com — defaults to your login"
 							size="sm"
 							value={ownerEmail}
 							onChange={(e) => setOwnerEmail(e.target.value)}
