@@ -8,5 +8,6 @@ export interface Env extends Cloudflare.Env {
 	EMAIL?: SendEmail;
 	GOOGLE_CLIENT_ID: string;
 	GOOGLE_CLIENT_SECRET: string;
+	BREVO_API_KEY?: string;
 	MQ_ADMIN_EMAIL: string;
 }

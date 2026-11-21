@@ -57,7 +57,7 @@ export async function handleReplyEmail(c: AppContext) {
 	const attachmentData = await storeAttachments(getBucket(c.env), messageId, attachments);
 
 	try {
-		await sendEmail(c.env.EMAIL, {
+		await sendEmail(c.env, {
 			to,
 			cc,
 			bcc,
@@ -148,7 +148,7 @@ export async function handleForwardEmail(c: AppContext) {
 	const attachmentData = await storeAttachments(getBucket(c.env), messageId, attachments);
 
 	try {
-		await sendEmail(c.env.EMAIL, {
+		await sendEmail(c.env, {
 			to,
 			cc,
 			bcc,
